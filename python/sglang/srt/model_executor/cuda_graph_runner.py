@@ -680,6 +680,12 @@ class CudaGraphRunner:
             global_forward_mode=self.capture_forward_mode,
             lora_ids=lora_ids,
         )
+
+        # HiSparse: set coordinator so the hisparse code path is captured into the graph
+        forward_batch.hisparse_coordinator = self.model_runner.hisparse_coordinator
+        if forward_batch.hisparse_coordinator is not None:
+            forward_batch.hisparse_coordinator.num_real_reqs.fill_(bs)
+
         self.tbo_plugin.capture_one_batch_size(forward_batch, num_tokens=num_tokens)
 
         if lora_ids is not None:
@@ -842,6 +848,9 @@ class CudaGraphRunner:
         self.raw_bs = raw_bs
         self.raw_num_token = raw_num_token
         self.bs = bs
+
+        if self.model_runner.hisparse_coordinator is not None:
+            self.model_runner.hisparse_coordinator.num_real_reqs.fill_(raw_bs)
 
     def replay(
         self,

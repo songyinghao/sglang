@@ -730,20 +730,9 @@ class Scheduler(
                 self.tree_cache = RadixCache(params)
 
         if self.enable_hisparse:
-            # todo hisparse: hardcode some hisparse config here for now
-            self.hisparse_coordinator = HiSparseCoordinator(
-                req_to_token_pool=self.req_to_token_pool,
-                token_to_kv_pool_allocator=self.token_to_kv_pool_allocator,
-                top_k=2048,
-                device_buffer_size=4096,
-                device=self.device,
-                tp_group=(
-                    self.attn_tp_cpu_group
-                    if self.server_args.enable_dp_attention
-                    else self.tp_cpu_group
-                ),
-            )
-            self.tp_worker.register_hisparse_coordinator(self.hisparse_coordinator)
+            # Coordinator was created inside ModelRunner.initialize() before CUDA graph capture
+            self.hisparse_coordinator = self.tp_worker.model_runner.hisparse_coordinator
+            self.hisparse_coordinator.set_decode_producer_stream(self.forward_stream)
 
         if (
             server_args.disaggregation_mode == "decode"
@@ -2795,6 +2784,8 @@ class Scheduler(
             self.send_to_tokenizer.send_output(AbortReq(rid=req.rid), req)
             # For disaggregation decode mode, the request in the waiting queue has KV cache allocated.
             if self.disaggregation_mode == DisaggregationMode.DECODE:
+                if self.enable_hisparse:
+                    self.hisparse_coordinator.request_finished(req)
                 release_kv_cache(req, self.tree_cache)
             # For disaggregation prefill mode, free the metadata buffer index
             if self.disaggregation_mode == DisaggregationMode.PREFILL:

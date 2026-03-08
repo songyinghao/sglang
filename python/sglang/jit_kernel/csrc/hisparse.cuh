@@ -66,6 +66,7 @@ __global__ void load_cache_to_device_buffer_kernel(
     const IdxType* __restrict__ req_pool_indices,
     const IdxType* __restrict__ seq_lens,
     int16_t* __restrict__ lru_slots,
+    const int32_t* __restrict__ num_real_reqs,
     int64_t buffer_stride_0,
     int64_t buffer_stride_1,
     int64_t host_stride,
@@ -85,6 +86,10 @@ __global__ void load_cache_to_device_buffer_kernel(
 
   const int tid = threadIdx.x;
   const int bid = blockIdx.x;
+
+  // Early exit for padded blocks (CUDA graph pads batch to a captured size)
+  if (bid >= num_real_reqs[0]) return;
+
   const int64_t rid = req_pool_indices[bid];
   const int64_t seq_len = seq_lens[bid];
   const int warp_id = tid / WARP_SIZE;
@@ -158,7 +163,8 @@ __global__ void load_cache_to_device_buffer_kernel(
 
   __syncthreads();
 
-  // If topk includes the latest token, bind it to newest_slot (at HOT_BUFFER_SIZE) and mark as hit.
+  // If topk includes the latest token, bind its canonical occurrence to
+  // newest_slot (at HOT_BUFFER_SIZE) and mark it as a hit.
   // newest_slot is at the first position of the extra page, excluded from LRU tracking.
   if (tid == 0 && newest_token >= 0 && newest_token < diff_map_stride) {
     const int newest_topk_idx = my_diff_map[newest_token];
@@ -432,6 +438,7 @@ struct SparseCacheKernel {
       tvm::ffi::TensorView req_pool_indices,
       tvm::ffi::TensorView seq_lens,
       tvm::ffi::TensorView lru_slots,
+      tvm::ffi::TensorView num_real_reqs,
       int64_t page_size,
       int64_t layer_id,
       int64_t item_size_bytes) {
@@ -460,6 +467,7 @@ struct SparseCacheKernel {
     const IdxType* req_pool_indices_ptr = static_cast<const IdxType*>(req_pool_indices.data_ptr());
     const IdxType* seq_lens_ptr = static_cast<const IdxType*>(seq_lens.data_ptr());
     int16_t* lru_slots_ptr = static_cast<int16_t*>(lru_slots.data_ptr());
+    const int32_t* num_real_reqs_ptr = static_cast<const int32_t*>(num_real_reqs.data_ptr());
 
     const auto device = LaunchKernel::resolve_device(top_k_tokens.device());
 
@@ -478,6 +486,7 @@ struct SparseCacheKernel {
         req_pool_indices_ptr,
         seq_lens_ptr,
         lru_slots_ptr,
+        num_real_reqs_ptr,
         buffer_stride_0,
         buffer_stride_1,
         host_stride,
@@ -507,6 +516,7 @@ void load_cache_to_device_buffer(
     tvm::ffi::TensorView req_pool_indices,
     tvm::ffi::TensorView seq_lens,
     tvm::ffi::TensorView lru_slots,
+    tvm::ffi::TensorView num_real_reqs,
     int64_t page_size,
     int64_t layer_id,
     int64_t item_size_bytes) {
@@ -528,6 +538,7 @@ void load_cache_to_device_buffer(
         req_pool_indices,
         seq_lens,
         lru_slots,
+        num_real_reqs,
         page_size,
         layer_id,
         item_size_bytes);
@@ -546,6 +557,7 @@ void load_cache_to_device_buffer(
         req_pool_indices,
         seq_lens,
         lru_slots,
+        num_real_reqs,
         page_size,
         layer_id,
         item_size_bytes);

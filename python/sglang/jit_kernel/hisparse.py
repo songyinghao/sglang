@@ -48,21 +48,14 @@ def load_cache_to_device_buffer_mla(
     req_pool_indices: torch.Tensor,
     seq_lens: torch.Tensor,
     lru_slots: torch.Tensor,
-    page_size: int,
     layer_id: int,
     item_size_bytes: int,
-    *,
+    num_top_k: int,
+    hot_buffer_size: int,
+    page_size: int = 1,
     block_size: int = 256,
-    num_top_k: int = 512,
-    hot_buffer_size: int = 1024,
+    num_real_reqs: torch.Tensor | None = None,
 ) -> None:
-    # Infer parameters if not provided
-    if num_top_k <= 0:
-        num_top_k = top_k_tokens.size(-1)
-    if hot_buffer_size <= 0:
-        hot_buffer_size = device_buffer_tokens.size(-1)
-
-    # Validate that HOT_BUFFER_SIZE >= NUM_TOP_K
     assert (
         hot_buffer_size >= num_top_k
     ), f"hot_buffer_size ({hot_buffer_size}) must be >= num_top_k ({num_top_k})"
@@ -71,8 +64,12 @@ def load_cache_to_device_buffer_mla(
         item_size_bytes, block_size, num_top_k, hot_buffer_size, is_mla=True
     )
 
-    # Create empty tensors for V cache (not used in MLA)
     empty = torch.empty(0)
+
+    if num_real_reqs is None:
+        num_real_reqs = torch.tensor(
+            [top_k_tokens.size(0)], dtype=torch.int32, device=top_k_tokens.device
+        )
 
     module.load_cache_to_device_buffer(
         top_k_tokens,
@@ -88,6 +85,7 @@ def load_cache_to_device_buffer_mla(
         req_pool_indices,
         seq_lens,
         lru_slots,
+        num_real_reqs,
         page_size,
         layer_id,
         item_size_bytes,

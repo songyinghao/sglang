@@ -1,5 +1,6 @@
 # to be combined with the sparse coordinator class and sparse algorithm family
 
+import logging
 from typing import List, NamedTuple, Optional
 
 import torch
@@ -16,6 +17,8 @@ device_module = get_device_module()
 
 from sglang.jit_kernel.hisparse import load_cache_to_device_buffer_mla
 from sglang.srt.mem_cache.memory_pool import ReqToTokenPool
+
+logger = logging.getLogger(__name__)
 
 
 class HiSparseAct(NamedTuple):
@@ -72,6 +75,7 @@ class HiSparseCoordinator:
 
         self.write_staging_stream = device_module.Stream()
         self.ack_staging_queue: List[HiSparseAct] = []
+        self.decode_producer_stream = None
 
         self.tp_group = tp_group
         self.tp_world_size = torch.distributed.get_world_size(group=self.tp_group)
@@ -105,6 +109,17 @@ class HiSparseCoordinator:
             .contiguous()
         )
 
+        # Pre-allocated output buffer for swap_in_selected_pages (CUDA-graph safe)
+        self.top_k_device_locs_buffer = torch.full(
+            (max_num_reqs, self.top_k), -1, dtype=torch.int32, device=device
+        )
+        # Scalar tensor: number of real (non-padded) requests in the batch.
+        # Updated before each graph replay so padded blocks early-return.
+        self.num_real_reqs = torch.zeros(1, dtype=torch.int32, device=device)
+
+    def set_decode_producer_stream(self, stream) -> None:
+        self.decode_producer_stream = stream
+
     def admit_request_into_staging(self, req: Req) -> None:
         req.staging = True
         logical_indices = self.req_to_token_pool.req_to_token[
@@ -115,10 +130,17 @@ class HiSparseCoordinator:
         )
 
         prefill_len = len(device_indices)
-        host_indices = self.mem_pool_host.alloc(prefill_len).to(device=self.device)
-        assert (
-            host_indices is not None
-        ), "Host mem pool alloc failed, this should not happen"
+        host_indices = self.mem_pool_host.alloc(prefill_len)
+        if host_indices is None:
+            logger.error(
+                "HiSparse: host mem pool alloc failed for %d tokens (req %s)",
+                prefill_len,
+                req.rid,
+            )
+            raise RuntimeError(
+                f"HiSparse host mem pool alloc failed for {prefill_len} tokens"
+            )
+        host_indices = host_indices.to(device=self.device)
         self.req_to_host_pool[req.req_pool_idx, :prefill_len] = host_indices
 
         start_event = device_module.Event()
@@ -145,6 +167,15 @@ class HiSparseCoordinator:
             allocated_indices,
             self.padded_buffer_size,
         )
+        if buffer_indices is None:
+            logger.error(
+                "HiSparse: alloc_device_buffer failed for req %s "
+                "(kv_allocated_len=%d, padded_buffer_size=%d)",
+                req.rid,
+                req.kv_allocated_len,
+                self.padded_buffer_size,
+            )
+            raise RuntimeError("HiSparse alloc_device_buffer returned None")
         self.req_to_device_buffer[req.req_pool_idx, : self.padded_buffer_size] = (
             buffer_indices
         )
@@ -236,6 +267,9 @@ class HiSparseCoordinator:
         where that position is a prefill token already backed up during
         staging (detected by req_to_host_pool >= 0).
         """
+        if self.decode_producer_stream is not None:
+            device_module.current_stream().wait_stream(self.decode_producer_stream)
+
         prev_pos = seq_lens - 2
         long_mask = (prev_pos >= 0) & (seq_lens > self.device_buffer_size)
         if not torch.any(long_mask):
@@ -256,8 +290,16 @@ class HiSparseCoordinator:
             backup_req_indices, self.device_buffer_size
         ]
 
-        host_locs = self.mem_pool_host.alloc(len(device_locs)).to(device=self.device)
-        assert host_locs is not None, "Host mem pool alloc failed"
+        host_locs = self.mem_pool_host.alloc(len(device_locs))
+        if host_locs is None:
+            logger.error(
+                "HiSparse: host mem pool alloc failed for %d decode backup tokens",
+                len(device_locs),
+            )
+            raise RuntimeError(
+                f"HiSparse host mem pool alloc failed for {len(device_locs)} decode backup tokens"
+            )
+        host_locs = host_locs.to(device=self.device)
         self.req_to_host_pool[backup_req_indices, backup_positions] = host_locs
 
         # Runs on the default stream; forward_stream.wait_stream(default_stream)
@@ -381,10 +423,7 @@ class HiSparseCoordinator:
         return top_k_indices
 
     def retract_req(self, req: Req) -> None:
-        # release resources for the request
-        # todo, cancel ongoing data transfer for the request if any
         self.request_finished(req)
-        return
 
     def request_finished(self, req: Req):
         # release memory
@@ -415,17 +454,12 @@ class HiSparseCoordinator:
         seq_lens: torch.Tensor,
         top_k_result: torch.Tensor,
         layer_id: int,
-    ):
-        """
-        Swap in selected top-k pages/tokens from host to device memory using
-        a fused diff + transfer kernel.
-        Returns:
-            Device indices of the selected pages/tokens
-        """
+    ) -> torch.Tensor:
+        """Swap selected top-k tokens into device memory and return their indices."""
         num_reqs = req_pool_indices.size(0)
-        top_k_indices = torch.full(
-            (num_reqs, self.top_k), -1, dtype=torch.int32, device=self.device
-        )
+        # Reuse pre-allocated buffer (CUDA-graph safe: stable address)
+        top_k_indices = self.top_k_device_locs_buffer[:num_reqs]
+        top_k_indices.fill_(-1)
         block_size = 512
         load_cache_to_device_buffer_mla(
             top_k_tokens=top_k_result,
@@ -439,11 +473,12 @@ class HiSparseCoordinator:
             req_pool_indices=req_pool_indices,
             seq_lens=seq_lens,
             lru_slots=self.lru_slots,
-            page_size=1,
             layer_id=layer_id,
             item_size_bytes=self.mem_pool_host.token_stride_size,
-            block_size=block_size,
             num_top_k=self.top_k,
             hot_buffer_size=self.device_buffer_size,
+            page_size=1,
+            block_size=block_size,
+            num_real_reqs=self.num_real_reqs,
         )
         return top_k_indices

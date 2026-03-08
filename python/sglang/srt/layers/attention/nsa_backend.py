@@ -41,8 +41,6 @@ from sglang.srt.layers.dp_attention import get_attention_tp_size
 from sglang.srt.model_executor.forward_batch_info import ForwardBatch, ForwardMode
 from sglang.srt.utils import is_cuda, is_hip
 
-# from sgl_kernel.flash_attn import flash_attn_varlen_func, flash_attn_with_kvcache
-
 if TYPE_CHECKING:
     from sglang.srt.layers.radix_attention import RadixAttention
     from sglang.srt.model_executor.model_runner import ModelRunner
@@ -1558,16 +1556,6 @@ class NativeSparseAttnBackend(
             topk_indices = self._pad_topk_indices(topk_indices, q_nope.shape[0])
 
         if forward_batch.hisparse_coordinator is not None:
-            # page_table_1 = forward_batch.hisparse_coordinator.get_front_topk_tokens(
-            #     forward_batch.req_pool_indices,
-            #     forward_batch.seq_lens,
-            # )
-            # page_table_1 = forward_batch.hisparse_coordinator.naive_load_topk(
-            #     forward_batch.req_pool_indices,
-            #     forward_batch.seq_lens,
-            #     topk_indices,
-            #     layer.layer_id,
-            # )
             page_table_1 = forward_batch.hisparse_coordinator.swap_in_selected_pages(
                 forward_batch.req_pool_indices,
                 forward_batch.seq_lens,

@@ -406,6 +406,9 @@ class ModelRunner(ModelRunnerKVCacheMixin):
         if deep_gemm_wrapper.ENABLE_JIT_DEEPGEMM:
             deep_gemm_wrapper.update_deep_gemm_config(gpu_id, server_args)
 
+        # For hisparse (must be set before initialize() so CUDA graph capture can see it)
+        self.hisparse_coordinator = None
+
         # Initialize the model runner
         self.initialize(min_per_gpu_memory)
         self.check_quantized_moe_compatibility()
@@ -426,9 +429,6 @@ class ModelRunner(ModelRunnerKVCacheMixin):
         # For weight updates
         self._model_update_group = {}
         self._weights_send_group = {}
-
-        # For hisparse
-        self.hisparse_coordinator = None
 
     def init_mindspore_runner(self):
         # Init the mindspore runner
@@ -598,6 +598,23 @@ class ModelRunner(ModelRunnerKVCacheMixin):
             ),
             self.req_to_token_pool.size,
         )
+
+        # Init hisparse coordinator (must happen before CUDA graph capture)
+        if self.enable_hisparse:
+            from sglang.srt.managers.hisparse_coordinator import HiSparseCoordinator
+
+            self.hisparse_coordinator = HiSparseCoordinator(
+                req_to_token_pool=self.req_to_token_pool,
+                token_to_kv_pool_allocator=self.token_to_kv_pool_allocator,
+                top_k=2048,
+                device_buffer_size=2048,
+                device=self.device,
+                tp_group=(
+                    self.attention_tp_group.cpu_group
+                    if self.server_args.enable_dp_attention
+                    else self.tp_group.cpu_group
+                ),
+            )
 
         # Init routed experts capturer
         self.init_routed_experts_capturer()
@@ -2491,6 +2508,8 @@ class ModelRunner(ModelRunnerKVCacheMixin):
             )
 
         forward_batch.hisparse_coordinator = self.hisparse_coordinator
+        if self.hisparse_coordinator is not None:
+            self.hisparse_coordinator.num_real_reqs.fill_(forward_batch.batch_size)
         if forward_batch.forward_mode.is_decode():
             ret = self.forward_decode(
                 forward_batch,
