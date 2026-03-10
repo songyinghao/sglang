@@ -24,7 +24,11 @@ from sglang.test.test_utils import (
 )
 
 register_cuda_ci(est_time=350, suite="stage-c-test-4-gpu-h100")
-register_amd_ci(est_time=350, suite="stage-c-test-4-gpu-amd", disabled="Server OOM on 4-GPU MI325 runners - needs memory tuning")
+register_amd_ci(
+    est_time=350,
+    suite="stage-c-test-4-gpu-amd",
+    disabled="Server OOM on 4-GPU MI325 runners - needs memory tuning",
+)
 
 
 class TestDPAttentionDP2TP4(

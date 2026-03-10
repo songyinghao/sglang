@@ -22,7 +22,11 @@ from sglang.test.test_utils import (
 )
 
 register_cuda_ci(est_time=360, suite="stage-c-test-4-gpu-h100")
-register_amd_ci(est_time=360, suite="stage-c-test-4-gpu-amd", disabled="RCCL timeout with dp=4 on 4-GPU MI325 runners")
+register_amd_ci(
+    est_time=360,
+    suite="stage-c-test-4-gpu-amd",
+    disabled="RCCL timeout with dp=4 on 4-GPU MI325 runners",
+)
 
 SHAREGPT_URL = (
     "https://huggingface.co/datasets/anon8231489123/"

@@ -21,7 +21,11 @@ from sglang.test.test_utils import (
 )
 
 register_cuda_ci(est_time=64, suite="stage-c-test-4-gpu-h100")
-register_amd_ci(est_time=64, suite="stage-c-test-4-gpu-amd", disabled="RCCL multi-process allreduce timeout on 4-GPU MI325 runners")
+register_amd_ci(
+    est_time=64,
+    suite="stage-c-test-4-gpu-amd",
+    disabled="RCCL multi-process allreduce timeout on 4-GPU MI325 runners",
+)
 
 TEST_SUITE = dict(
     model_path=DEFAULT_SMALL_MODEL_NAME_FOR_TEST,

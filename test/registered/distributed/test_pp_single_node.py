@@ -102,9 +102,7 @@ class TestPPAccuracy(unittest.TestCase):
         assert len(output_top_logprobs) == 16
 
 
-@unittest.skipIf(
-    is_in_amd_ci(), "MLA model with DP attention not yet supported on AMD"
-)
+@unittest.skipIf(is_in_amd_ci(), "MLA model with DP attention not yet supported on AMD")
 class TestDPAttentionDP2PP2(CustomTestCase):
     @classmethod
     def setUpClass(cls):
