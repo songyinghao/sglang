@@ -19,7 +19,7 @@ env:
   SGLANG_IS_IN_CI: true
   SRT_SLURM_BRANCH: sa-submission-q1-2026
   SLURM_PARTITION: batch
-  SLURM_ACCOUNT: benchmark
+  SLURM_ACCOUNT: sglang
 
 jobs:
   # ---------------------------------------------------------------------------
@@ -143,21 +143,3 @@ jobs:
             echo "Cancelling jobs: $ACTIVE_JOBS"
             scancel $ACTIVE_JOBS
           fi
-
-  # Final status check
-  check-all-jobs:
-    if: github.repository == 'sgl-project/sglang' && always()
-    needs: [setup, prepare-image, nightly-gb200-benchmark]
-    runs-on: ubuntu-latest
-    steps:
-      - name: Check if any job failed
-        run: |
-          if [[ "${{ contains(needs.*.result, 'failure') }}" == "true" ]]; then
-            echo "One or more GB200 nightly jobs failed"
-            exit 1
-          fi
-          if [[ "${{ contains(needs.*.result, 'cancelled') }}" == "true" ]]; then
-            echo "One or more GB200 nightly jobs were cancelled"
-            exit 1
-          fi
-          echo "All GB200 nightly jobs passed"
