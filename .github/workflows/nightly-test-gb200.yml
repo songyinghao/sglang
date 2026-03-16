@@ -1,0 +1,118 @@
+name: Nightly Test (GB200)
+
+# NOTE: This workflow is intentionally cron-only.
+# It must NOT be triggered manually (no workflow_dispatch) to prevent
+# individuals from queuing arbitrary jobs on the shared GB200 cluster.
+on:
+  schedule:
+    - cron: '0 2 * * *'  # 2 AM UTC daily (offset from other nightly runs)
+  workflow_dispatch:  # manual trigger for testing; remove once nightly is validated
+
+concurrency:
+  group: nightly-test-gb200
+  cancel-in-progress: false  # Never cancel a running nightly on shared cluster
+
+env:
+  SGLANG_IS_IN_CI: true
+  SRT_SLURM_BRANCH: sa-submission-q1-2026
+  SLURM_PARTITION: batch
+  SLURM_ACCOUNT: benchmark
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # Reads scripts/ci/slurm/nightly-configs.yaml and generates one matrix entry
+  # per recipe YAML, matching InferenceX's multi-node approach. Each job runs
+  # the full concurrency sweep defined in the recipe as a single Slurm job.
+  # To add/remove configs, edit nightly-configs.yaml only.
+  # ---------------------------------------------------------------------------
+  setup:
+    if: github.repository == 'sgl-project/sglang'
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.generate.outputs.matrix }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Generate benchmark matrix
+        id: generate
+        run: |
+          pip install pyyaml -q
+          MATRIX=$(python3 scripts/ci/slurm/generate_matrix.py scripts/ci/slurm/nightly-configs.yaml --runner gb200)
+          echo "matrix=$MATRIX" >> $GITHUB_OUTPUT
+
+  nightly-gb200-benchmark:
+    needs: setup
+    if: github.repository == 'sgl-project/sglang'
+    runs-on: gb200
+    strategy:
+      fail-fast: false
+      matrix:
+        config: ${{ fromJson(needs.setup.outputs.matrix) }}
+    env:
+      RUNNER_NAME: ${{ runner.name }}
+      FRAMEWORK: dynamo-sglang
+      MODEL: ${{ matrix.config.model }}
+      MODEL_PREFIX: ${{ matrix.config.model_prefix }}
+      PRECISION: ${{ matrix.config.precision }}
+      ISL: ${{ matrix.config.isl }}
+      OSL: ${{ matrix.config.osl }}
+      IMAGE: ${{ matrix.config.image }}
+      CONFIG_FILE: ${{ matrix.config.config_file }}
+      RESULT_FILENAME: gb200-${{ matrix.config.name }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Clean up prior Slurm jobs from this runner
+        continue-on-error: true
+        run: |
+          STALE_JOBS=$(squeue --noheader --format="%i %j" | grep "${RUNNER_NAME}" | awk '{print $1}')
+          if [ -n "$STALE_JOBS" ]; then
+            echo "Cancelling stale jobs: $STALE_JOBS"
+            scancel $STALE_JOBS
+          fi
+
+      - name: Launch GB200 benchmark via srt-slurm
+        timeout-minutes: 360
+        run: bash scripts/ci/slurm/launch_gb200.sh
+
+      - name: Upload results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gb200-${{ matrix.config.name }}-${{ github.run_id }}
+          path: |
+            ${{ github.workspace }}/*.json
+            ${{ github.workspace }}/multinode_server_logs.tar.gz
+          retention-days: 30
+          if-no-files-found: warn
+
+      - name: Clean up Slurm jobs on failure/cancel
+        if: failure() || cancelled()
+        continue-on-error: true
+        run: |
+          ACTIVE_JOBS=$(squeue --noheader --format="%i %j" | grep "${RUNNER_NAME}" | awk '{print $1}')
+          if [ -n "$ACTIVE_JOBS" ]; then
+            echo "Cancelling jobs: $ACTIVE_JOBS"
+            scancel $ACTIVE_JOBS
+          fi
+
+  # Final status check
+  check-all-jobs:
+    if: github.repository == 'sgl-project/sglang' && always()
+    needs: [setup, nightly-gb200-benchmark]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check if any job failed
+        run: |
+          if [[ "${{ contains(needs.*.result, 'failure') }}" == "true" ]]; then
+            echo "One or more GB200 nightly jobs failed"
+            exit 1
+          fi
+          if [[ "${{ contains(needs.*.result, 'cancelled') }}" == "true" ]]; then
+            echo "One or more GB200 nightly jobs were cancelled"
+            exit 1
+          fi
+          echo "All GB200 nightly jobs passed"
