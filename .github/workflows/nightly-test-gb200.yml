@@ -7,6 +7,9 @@ on:
   schedule:
     - cron: '0 2 * * *'  # 2 AM UTC daily (offset from other nightly runs)
   workflow_dispatch:  # manual trigger for testing; remove once nightly is validated
+  push:
+    branches:
+      - sahithi/sa-nightly-pipeline
 
 concurrency:
   group: nightly-test-gb200
