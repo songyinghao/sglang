@@ -63,7 +63,6 @@ def main():
                         "precision": exp["precision"],
                         "isl": str(isl),
                         "osl": str(osl),
-                        "image": exp["image"],
                         "config_file": config_file,
                     }
                 )

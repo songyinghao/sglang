@@ -8,10 +8,11 @@
 #   PRECISION         - "fp8" or "fp4"
 #   ISL               - input sequence length (e.g. "1024")
 #   OSL               - output sequence length (e.g. "1024")
-#   IMAGE             - Docker image to pull / convert to squash file
 #   CONFIG_FILE       - path relative to srt-slurm repo root (e.g. recipes/gb200-fp8/1k1k/low-latency.yaml)
 #   RESULT_FILENAME   - prefix for output JSON filenames
 #   RUNNER_NAME       - GitHub Actions runner name (used to tag the Slurm job)
+#   SQUASH_FILE       - path to pre-imported sglang enroot squash file on Lustre
+#   NGINX_SQUASH_FILE - path to pre-imported nginx enroot squash file on Lustre
 #   SLURM_PARTITION   - Slurm partition (default: batch)
 #   SLURM_ACCOUNT     - Slurm account  (default: benchmark)
 #   SRT_SLURM_BRANCH  - branch of srt-slurm repo to check out
@@ -28,16 +29,16 @@ set -x
 : "${PRECISION:?}"
 : "${ISL:?}"
 : "${OSL:?}"
-: "${IMAGE:?}"
 : "${CONFIG_FILE:?}"
 : "${RESULT_FILENAME:?}"
 : "${RUNNER_NAME:?}"
+: "${SQUASH_FILE:?}"
+: "${NGINX_SQUASH_FILE:?}"
 : "${GITHUB_WORKSPACE:?}"
 
 SLURM_PARTITION="${SLURM_PARTITION:-batch}"
 SLURM_ACCOUNT="${SLURM_ACCOUNT:-sglang}"
 SRT_SLURM_BRANCH="${SRT_SLURM_BRANCH:-sa-submission-q1-2026}"
-NGINX_IMAGE="nginx:1.27.4"
 
 # ---------------------------------------------------------------------------
 # Resolve local model paths on Lustre (avoids re-downloading on each run)
@@ -52,15 +53,6 @@ else
     MODEL_PATH="$MODEL"
     SRT_SLURM_MODEL_PREFIX="$MODEL_PREFIX"
 fi
-
-# ---------------------------------------------------------------------------
-# Import Docker images as enroot squash files on shared Lustre storage
-# ---------------------------------------------------------------------------
-SQUASH_FILE="/mnt/lustre01/users-public/sglang-ci/$(echo "$IMAGE" | sed 's/[\/:@#]/_/g')_$(date +%Y%m%d).sqsh"
-NGINX_SQUASH_FILE="/mnt/lustre01/users-public/sglang-ci/$(echo "$NGINX_IMAGE" | sed 's/[\/:@#]/_/g').sqsh"
-
-enroot import -o "$SQUASH_FILE" "docker://$IMAGE"
-enroot import -o "$NGINX_SQUASH_FILE" "docker://$NGINX_IMAGE"
 
 # ---------------------------------------------------------------------------
 # Clone and set up srt-slurm

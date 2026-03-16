@@ -44,8 +44,44 @@ jobs:
           MATRIX=$(python3 scripts/ci/slurm/generate_matrix.py scripts/ci/slurm/nightly-configs.yaml --runner gb200)
           echo "matrix=$MATRIX" >> $GITHUB_OUTPUT
 
-  nightly-gb200-benchmark:
+  # ---------------------------------------------------------------------------
+  # Import Docker images to Lustre squash files once before all benchmark jobs.
+  # This avoids parallel jobs racing to enroot import the same image.
+  # ---------------------------------------------------------------------------
+  prepare-image:
     needs: setup
+    if: github.repository == 'sgl-project/sglang'
+    runs-on: gb200
+    outputs:
+      squash_file: ${{ steps.import.outputs.squash_file }}
+      nginx_squash_file: ${{ steps.import.outputs.nginx_squash_file }}
+    env:
+      IMAGE: lmsysorg/sglang:dev-cu13
+      NGINX_IMAGE: nginx:1.27.4
+    steps:
+      - name: Import Docker images to Lustre
+        id: import
+        run: |
+          SQUASH_FILE="/mnt/lustre01/users-public/sglang-ci/$(echo "$IMAGE" | sed 's/[\/:@#]/_/g')_$(date +%Y%m%d).sqsh"
+          NGINX_SQUASH_FILE="/mnt/lustre01/users-public/sglang-ci/$(echo "$NGINX_IMAGE" | sed 's/[\/:@#]/_/g').sqsh"
+
+          if [ -f "$SQUASH_FILE" ]; then
+            echo "Squash file already exists, skipping import: $SQUASH_FILE"
+          else
+            enroot import -o "$SQUASH_FILE" "docker://$IMAGE"
+          fi
+
+          if [ -f "$NGINX_SQUASH_FILE" ]; then
+            echo "Nginx squash file already exists, skipping import: $NGINX_SQUASH_FILE"
+          else
+            enroot import -o "$NGINX_SQUASH_FILE" "docker://$NGINX_IMAGE"
+          fi
+
+          echo "squash_file=$SQUASH_FILE" >> $GITHUB_OUTPUT
+          echo "nginx_squash_file=$NGINX_SQUASH_FILE" >> $GITHUB_OUTPUT
+
+  nightly-gb200-benchmark:
+    needs: [setup, prepare-image]
     if: github.repository == 'sgl-project/sglang'
     runs-on: gb200
     strategy:
@@ -59,9 +95,10 @@ jobs:
       PRECISION: ${{ matrix.config.precision }}
       ISL: ${{ matrix.config.isl }}
       OSL: ${{ matrix.config.osl }}
-      IMAGE: ${{ matrix.config.image }}
       CONFIG_FILE: ${{ matrix.config.config_file }}
       RESULT_FILENAME: gb200-${{ matrix.config.name }}
+      SQUASH_FILE: ${{ needs.prepare-image.outputs.squash_file }}
+      NGINX_SQUASH_FILE: ${{ needs.prepare-image.outputs.nginx_squash_file }}
 
     steps:
       - name: Checkout code
@@ -110,7 +147,7 @@ jobs:
   # Final status check
   check-all-jobs:
     if: github.repository == 'sgl-project/sglang' && always()
-    needs: [setup, nightly-gb200-benchmark]
+    needs: [setup, prepare-image, nightly-gb200-benchmark]
     runs-on: ubuntu-latest
     steps:
       - name: Check if any job failed
