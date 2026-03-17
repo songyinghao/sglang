@@ -14,7 +14,7 @@
 #   SQUASH_FILE       - path to pre-imported sglang enroot squash file on Lustre
 #   NGINX_SQUASH_FILE - path to pre-imported nginx enroot squash file on Lustre
 #   SLURM_PARTITION   - Slurm partition (default: batch)
-#   SLURM_ACCOUNT     - Slurm account  (default: benchmark)
+#   SLURM_ACCOUNT     - Slurm account  (default: sglang)
 #   SRT_SLURM_BRANCH  - branch of srt-slurm repo to check out
 #   GITHUB_WORKSPACE  - set automatically by GitHub Actions
 
@@ -109,6 +109,7 @@ model_paths:
 
 containers:
   dynamo-sglang: ${SQUASH_FILE}
+  nginx: ${NGINX_SQUASH_FILE}
   nginx-sqsh: ${NGINX_SQUASH_FILE}
 EOF
 

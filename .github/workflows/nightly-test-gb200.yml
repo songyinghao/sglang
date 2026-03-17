@@ -121,6 +121,24 @@ jobs:
           RUNNER_NAME: ${{ runner.name }}
         run: bash scripts/ci/slurm/launch_gb200.sh
 
+      - name: Process results
+        if: always()
+        env:
+          RUNNER_NAME: ${{ runner.name }}
+        run: |
+          pip install tabulate pyyaml -q
+          SRT_REPO_DIR="/mnt/lustre01/users-public/sglang-ci/workspace/${RUNNER_NAME}/srt-slurm"
+          for result_file in ${{ github.workspace }}/${RESULT_FILENAME}_*.json; do
+            [ -f "$result_file" ] || continue
+            basename_file=$(basename "$result_file")
+            ctx=$(echo "$basename_file" | sed -n 's/.*_ctx_\([0-9]*\)_gen.*/\1/p')
+            gen=$(echo "$basename_file" | sed -n 's/.*_gen_\([0-9]*\)\.json/\1/p')
+            [ -n "$ctx" ] && [ -n "$gen" ] || continue
+            RESULT_FILENAME="${result_file%.json}" PREFILL_GPUS="$ctx" DECODE_GPUS="$gen" \
+              RECIPE_FILE="$SRT_REPO_DIR/$CONFIG_FILE" \
+              python3 scripts/ci/slurm/process_result.py
+          done
+
       - name: Upload results
         if: always()
         uses: actions/upload-artifact@v4
@@ -143,3 +161,22 @@ jobs:
             echo "Cancelling jobs: $ACTIVE_JOBS"
             scancel $ACTIVE_JOBS
           fi
+
+  collect-results:
+    needs: nightly-gb200-benchmark
+    if: github.repository == 'sgl-project/sglang' && always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: results/
+          pattern: gb200-*
+
+      - name: Print summary
+        run: |
+          pip install tabulate -q
+          python3 scripts/ci/slurm/summarize.py results/ >> $GITHUB_STEP_SUMMARY
