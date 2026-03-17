@@ -7,12 +7,18 @@ Prompt encoding stages for diffusion pipelines.
 This module contains implementations of prompt encoding stages for diffusion pipelines.
 """
 
+import os
+
 import torch
 
 from sglang.multimodal_gen.configs.models.encoders import BaseEncoderOutput
 from sglang.multimodal_gen.configs.pipeline_configs import FluxPipelineConfig
 from sglang.multimodal_gen.configs.pipeline_configs.flux import Flux2PipelineConfig
-from sglang.multimodal_gen.runtime.distributed import get_local_torch_device
+from sglang.multimodal_gen.runtime.distributed import (
+    get_local_torch_device,
+    get_sp_parallel_rank,
+    get_world_rank,
+)
 from sglang.multimodal_gen.runtime.managers.forward_context import set_forward_context
 from sglang.multimodal_gen.runtime.pipelines_core.schedule_batch import Req
 from sglang.multimodal_gen.runtime.pipelines_core.stages.base import PipelineStage
@@ -26,6 +32,32 @@ from sglang.multimodal_gen.runtime.server_args import ServerArgs
 from sglang.multimodal_gen.runtime.utils.logging_utils import init_logger
 
 logger = init_logger(__name__)
+
+
+def _maybe_dump_text_stage_outputs(
+    prompt_embeds_list: list[torch.Tensor],
+    prompt_masks_list: list[torch.Tensor],
+    pooler_embeds_list: list[torch.Tensor],
+) -> None:
+    dump_path = os.getenv("SGLANG_DEBUG_DUMP_PROMPT_EMBEDS_PATH")
+    if not dump_path:
+        return
+    world_rank = get_world_rank()
+    sp_rank = get_sp_parallel_rank()
+    if "{world_rank}" in dump_path:
+        dump_path = dump_path.format(world_rank=world_rank, sp_rank=sp_rank)
+    elif world_rank != 0:
+        dump_path = f"{dump_path}.rank{world_rank}"
+    torch.save(
+        {
+            "world_rank": world_rank,
+            "sp_rank": sp_rank,
+            "prompt_embeds": [x.detach().cpu() for x in prompt_embeds_list],
+            "prompt_masks": [x.detach().cpu() for x in prompt_masks_list],
+            "pooler_embeds": [x.detach().cpu() for x in pooler_embeds_list],
+        },
+        dump_path,
+    )
 
 
 class TextEncodingStage(PipelineStage):
@@ -70,6 +102,9 @@ class TextEncodingStage(PipelineStage):
             server_args,
             encoder_index=all_indices,
             return_attention_mask=True,
+        )
+        _maybe_dump_text_stage_outputs(
+            prompt_embeds_list, prompt_masks_list, pooler_embeds_list
         )
 
         for pe in prompt_embeds_list:

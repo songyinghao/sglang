@@ -457,7 +457,9 @@ class GlmImageAttention(torch.nn.Module):
             mix_attn_mask = mix_attn_mask.unsqueeze(2)
             attn_mask_matrix = mix_attn_mask @ mix_attn_mask.transpose(1, 2)
             attention_mask = (attn_mask_matrix > 0).unsqueeze(1).to(query.dtype)
-        hidden_states = self.attn(query, key, value)
+        hidden_states = self.attn(
+            query, key, value, num_replicated_prefix=text_seq_length
+        )
         hidden_states = hidden_states.flatten(2, 3)
         hidden_states = hidden_states.to(query.dtype)
 

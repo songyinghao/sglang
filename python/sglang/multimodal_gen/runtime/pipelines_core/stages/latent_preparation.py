@@ -5,9 +5,16 @@
 Latent preparation stage for diffusion pipelines.
 """
 
+import os
+
+import torch
 from diffusers.utils.torch_utils import randn_tensor
 
-from sglang.multimodal_gen.runtime.distributed import get_local_torch_device
+from sglang.multimodal_gen.runtime.distributed import (
+    get_local_torch_device,
+    get_sp_parallel_rank,
+    get_world_rank,
+)
 from sglang.multimodal_gen.runtime.pipelines_core.schedule_batch import Req
 from sglang.multimodal_gen.runtime.pipelines_core.stages.base import PipelineStage
 from sglang.multimodal_gen.runtime.pipelines_core.stages.validators import (
@@ -20,6 +27,27 @@ from sglang.multimodal_gen.runtime.server_args import ServerArgs
 from sglang.multimodal_gen.runtime.utils.logging_utils import init_logger
 
 logger = init_logger(__name__)
+
+
+def _maybe_dump_latents(latents, latent_ids) -> None:
+    dump_path = os.getenv("SGLANG_DEBUG_DUMP_LATENTS_PATH")
+    if not dump_path:
+        return
+    world_rank = get_world_rank()
+    sp_rank = get_sp_parallel_rank()
+    if "{world_rank}" in dump_path:
+        dump_path = dump_path.format(world_rank=world_rank, sp_rank=sp_rank)
+    elif world_rank != 0:
+        dump_path = f"{dump_path}.rank{world_rank}"
+    torch.save(
+        {
+            "world_rank": world_rank,
+            "sp_rank": sp_rank,
+            "latents": latents.detach().cpu(),
+            "latent_ids": None if latent_ids is None else latent_ids.detach().cpu(),
+        },
+        dump_path,
+    )
 
 
 class LatentPreparationStage(PipelineStage):
@@ -99,6 +127,7 @@ class LatentPreparationStage(PipelineStage):
         # Scale the initial noise if needed
         if hasattr(self.scheduler, "init_noise_sigma"):
             latents = latents * self.scheduler.init_noise_sigma
+        _maybe_dump_latents(latents, batch.latent_ids)
         # Update batch with prepared latents
         batch.latents = latents
         batch.raw_latent_shape = latents.shape

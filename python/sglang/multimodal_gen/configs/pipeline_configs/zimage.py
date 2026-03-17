@@ -83,7 +83,7 @@ class ZImagePipelineConfig(ImagePipelineConfig):
         return int(math.ceil(x / m) * m)
 
     def _build_zimage_sp_plan(self, batch) -> dict:
-        """Build a minimal SP plan on batch for zimage (spatial sharding + cap sharding)."""
+        """Build a minimal SP plan on batch for zimage spatial sharding."""
         sp_size = get_sp_world_size()
         rank = get_sp_parallel_rank()
 
@@ -112,16 +112,6 @@ class ZImagePipelineConfig(ImagePipelineConfig):
         H_tok_local = H_tok_pad // sp_size
         h0_tok = rank * H_tok_local
 
-        # Cap/text sharding: avoid duplicating cap tokens across ranks.
-        cap_len = (
-            int(batch.prompt_embeds[0].size(0))
-            if getattr(batch, "prompt_embeds", None)
-            else 0
-        )
-        cap_total = self._ceil_to_multiple(cap_len, self.SEQ_LEN_MULTIPLE * sp_size)
-        cap_local = cap_total // sp_size
-        cap_start = rank * cap_local
-
         plan = {
             "sp_size": sp_size,
             "rank": rank,
@@ -135,9 +125,6 @@ class ZImagePipelineConfig(ImagePipelineConfig):
             "H_tok_pad": H_tok_pad,
             "H_tok_local": H_tok_local,
             "h0_tok": h0_tok,
-            "cap_total": cap_total,
-            "cap_local": cap_local,
-            "cap_start": cap_start,
         }
         batch._zimage_sp_plan = plan
         return plan
@@ -149,25 +136,8 @@ class ZImagePipelineConfig(ImagePipelineConfig):
             plan = self._build_zimage_sp_plan(batch)
         return plan
 
-    def _shard_cap(self, cap: torch.Tensor, plan: dict) -> torch.Tensor:
-        """cap: [L, D] -> [cap_local, D], padded by repeating last token."""
-        if plan["sp_size"] <= 1:
-            return cap
-        # print(f"cap shape: {cap.shape}")  # [L, 2560] for zimage-turbo
-        L = cap.size(0)
-        cap_total = plan["cap_total"]
-        if cap_total > L:
-            cap = torch.cat([cap, cap[-1:].repeat(cap_total - L, 1)], dim=0)
-        start = plan["cap_start"]
-        local = plan["cap_local"]
-        return cap[start : start + local]
-
     def get_pos_prompt_embeds(self, batch):
-        # Keep ZImage model signature: encoder_hidden_states is List[Tensor]
-        if get_sp_world_size() <= 1:
-            return batch.prompt_embeds
-        plan = self._get_zimage_sp_plan(batch)
-        return [self._shard_cap(batch.prompt_embeds[0], plan)]
+        return batch.prompt_embeds
 
     def shard_latents_for_sp(self, batch, latents):
         sp_size = get_sp_world_size()
@@ -233,24 +203,27 @@ class ZImagePipelineConfig(ImagePipelineConfig):
 
         sp_size = get_sp_world_size()
         if sp_size > 1:
-            # SP path: build local-only freqs_cis matching local cap/x.
+            # SP path: keep caption replicated on every rank and build local-only
+            # image freqs_cis matching the spatial shard.
             plan = self._get_zimage_sp_plan(batch)
+            cap_ori_len = prompt_embeds.size(0)
+            cap_padding_len = (-cap_ori_len) % self.SEQ_LEN_MULTIPLE
 
-            # cap (local)
+            # caption (replicated prefix)
             cap_pos_ids = create_coordinate_grid(
-                size=(plan["cap_local"], 1, 1),
-                start=(1 + plan["cap_start"], 0, 0),
+                size=(cap_ori_len + cap_padding_len, 1, 1),
+                start=(1, 0, 0),
                 device=device,
             ).flatten(0, 2)
             cap_freqs_cis = rotary_emb(cap_pos_ids)
 
-            # image (local, effective H-shard). Use cap_total for a stable offset across ranks/passes.
+            # image (local, effective H-shard), offset after the full caption.
             F_tokens = 1
             H_tokens_local = plan["H_tok_local"]
             W_tokens = plan["W_tok"]
             img_pos_ids = create_coordinate_grid(
                 size=(F_tokens, H_tokens_local, W_tokens),
-                start=(plan["cap_total"] + 1, plan["h0_tok"], 0),
+                start=(cap_ori_len + cap_padding_len + 1, plan["h0_tok"], 0),
                 device=device,
             ).flatten(0, 2)
             img_pad_len = (-img_pos_ids.shape[0]) % self.SEQ_LEN_MULTIPLE

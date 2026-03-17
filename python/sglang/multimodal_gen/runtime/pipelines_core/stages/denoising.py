@@ -715,14 +715,23 @@ class DenoisingStage(PipelineStage):
         if (
             get_sp_world_size() > 1
             and getattr(batch, "did_sp_shard_latents", False)
-            and server_args.comfyui_mode
+            and (
+                server_args.comfyui_mode
+                or os.getenv("SGLANG_DEBUG_KEEP_NOISE_PRED") == "1"
+            )
             and hasattr(batch, "noise_pred")
             and batch.noise_pred is not None
         ):
             batch.noise_pred = server_args.pipeline_config.gather_latents_for_sp(
                 batch.noise_pred
             )
-            if hasattr(batch, "raw_latent_shape"):
+            if batch.noise_pred.dim() == 4:
+                batch.noise_pred = sequence_model_parallel_all_gather(
+                    batch.noise_pred.contiguous(), dim=2
+                )
+                if getattr(batch, "_zimage_sp_swap_hw", False):
+                    batch.noise_pred = batch.noise_pred.transpose(2, 3).contiguous()
+            if hasattr(batch, "raw_latent_shape") and batch.noise_pred.dim() == 3:
                 orig_s = batch.raw_latent_shape[1]
                 if batch.noise_pred.shape[1] > orig_s:
                     batch.noise_pred = batch.noise_pred[:, :orig_s, :]
@@ -1067,8 +1076,11 @@ class DenoisingStage(PipelineStage):
                             latents=latents,
                         )
 
-                        # Save noise_pred to batch for external access (e.g., ComfyUI)
-                        if server_args.comfyui_mode:
+                        # Optional debug hook to surface one-step noise_pred from
+                        # the standard pipeline without changing default behavior.
+                        if server_args.comfyui_mode or os.getenv(
+                            "SGLANG_DEBUG_KEEP_NOISE_PRED"
+                        ) == "1":
                             batch.noise_pred = noise_pred
 
                         # Compute the previous noisy sample
