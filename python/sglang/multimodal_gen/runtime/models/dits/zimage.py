@@ -469,7 +469,9 @@ class ZImageAttention(nn.Module):
                     x_complex = torch.view_as_complex(
                         x_in.float().reshape(*x_in.shape[:-1], -1, 2)
                     )
-                    x_out = torch.view_as_real(x_complex * freqs.unsqueeze(1)).flatten(3)
+                    x_out = torch.view_as_real(x_complex * freqs.unsqueeze(1)).flatten(
+                        3
+                    )
                     return x_out.type_as(x_in)
 
             q = apply_rotary_emb_reference(q, freqs_cis_complex)
@@ -517,7 +519,9 @@ class ZImageAttention(nn.Module):
                     x_complex = torch.view_as_complex(
                         x_in.float().reshape(*x_in.shape[:-1], -1, 2)
                     )
-                    x_out = torch.view_as_real(x_complex * freqs.unsqueeze(1)).flatten(3)
+                    x_out = torch.view_as_real(x_complex * freqs.unsqueeze(1)).flatten(
+                        3
+                    )
                     return x_out.float()
 
             q = apply_rotary_emb_reference(q, freqs_cis_complex)
@@ -563,7 +567,9 @@ class ZImageAttention(nn.Module):
                     x_complex = torch.view_as_complex(
                         x_in.float().reshape(*x_in.shape[:-1], -1, 2)
                     )
-                    x_out = torch.view_as_real(x_complex * freqs.unsqueeze(1)).flatten(3)
+                    x_out = torch.view_as_real(x_complex * freqs.unsqueeze(1)).flatten(
+                        3
+                    )
                     return x_out.to(dtype=x_in.dtype)
 
             q = apply_rotary_emb_reference(q, freqs_cis_complex)
@@ -693,7 +699,9 @@ class ZImageTransformerBlock(nn.Module):
             )
         else:
             if force_official_semantic:
-                context_dump_prefix = os.getenv("SGLANG_DEBUG_ZIMAGE_CONTEXT_PARTS_PREFIX")
+                context_dump_prefix = os.getenv(
+                    "SGLANG_DEBUG_ZIMAGE_CONTEXT_PARTS_PREFIX"
+                )
                 attn_input = self.attention_norm1.forward_native(x)
                 attn_out = self.attention.reference_forward_official(
                     attn_input,
@@ -701,7 +709,9 @@ class ZImageTransformerBlock(nn.Module):
                     attention_mask=attention_mask,
                 )
                 if context_dump_prefix and _debug_context_layer_matches(self.layer_id):
-                    _dump_debug_tensor(f"{context_dump_prefix}.attn_input.pt", attn_input)
+                    _dump_debug_tensor(
+                        f"{context_dump_prefix}.attn_input.pt", attn_input
+                    )
                     _dump_debug_tensor(f"{context_dump_prefix}.attn_out.pt", attn_out)
                 x = x + self.attention_norm2.forward_native(attn_out)
                 if context_dump_prefix and _debug_context_layer_matches(self.layer_id):
@@ -716,7 +726,9 @@ class ZImageTransformerBlock(nn.Module):
                     _dump_debug_tensor(f"{context_dump_prefix}.after_ffn.pt", x)
                 return x
             if force_fp32_reference:
-                context_dump_prefix = os.getenv("SGLANG_DEBUG_ZIMAGE_CONTEXT_PARTS_PREFIX")
+                context_dump_prefix = os.getenv(
+                    "SGLANG_DEBUG_ZIMAGE_CONTEXT_PARTS_PREFIX"
+                )
                 x = x.float()
                 freqs_cis = (freqs_cis[0].float(), freqs_cis[1].float())
                 attn_input = self.attention_norm1.forward_native(x)
@@ -725,7 +737,9 @@ class ZImageTransformerBlock(nn.Module):
                     freqs_cis=freqs_cis,
                 )
                 if context_dump_prefix and _debug_context_layer_matches(self.layer_id):
-                    _dump_debug_tensor(f"{context_dump_prefix}.attn_input.pt", attn_input)
+                    _dump_debug_tensor(
+                        f"{context_dump_prefix}.attn_input.pt", attn_input
+                    )
                     _dump_debug_tensor(f"{context_dump_prefix}.attn_out.pt", attn_out)
                 x = x + self.attention_norm2.forward_native(attn_out)
                 if context_dump_prefix and _debug_context_layer_matches(self.layer_id):
@@ -769,7 +783,9 @@ class ZImageTransformerBlock(nn.Module):
             if context_dump_prefix and _debug_context_layer_matches(self.layer_id):
                 _dump_debug_tensor(f"{context_dump_prefix}.ffn_input.pt", ffn_input)
                 _dump_debug_tensor(f"{context_dump_prefix}.ffn_out.pt", ffn_out)
-                if hasattr(self.feed_forward, "w13") and hasattr(self.feed_forward, "w2"):
+                if hasattr(self.feed_forward, "w13") and hasattr(
+                    self.feed_forward, "w2"
+                ):
                     _dump_debug_tensor(
                         f"{context_dump_prefix}.ffn_w13_weight.pt",
                         self.feed_forward.w13.weight,
