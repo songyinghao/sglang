@@ -7,7 +7,7 @@ from sglang.multimodal_gen.runtime.entrypoints.post_training.io_struct import (
     UpdateWeightFromDiskReqInput,
 )
 from sglang.multimodal_gen.runtime.scheduler_client import async_scheduler_client
-from sglang.srt.utils.json_response import SGLangORJSONResponse
+from sglang.srt.utils.json_response import orjson_response
 
 router = APIRouter()
 
@@ -18,9 +18,9 @@ async def update_weights_from_disk(request: Request):
     body = await request.json()
     model_path = body.get("model_path")
     if not model_path:
-        return SGLangORJSONResponse(
+        return orjson_response(
             {"success": False, "message": "model_path is required"},
-            status_code=400,
+            400,
         )
 
     req = UpdateWeightFromDiskReqInput(
@@ -32,17 +32,17 @@ async def update_weights_from_disk(request: Request):
     try:
         response = await async_scheduler_client.forward(req)
     except Exception as e:
-        return SGLangORJSONResponse(
+        return orjson_response(
             {"success": False, "message": str(e)},
-            status_code=500,
+            500,
         )
 
     result = response.output
     success = result.get("success", False)
     message = result.get("message", "Unknown status")
-    return SGLangORJSONResponse(
+    return orjson_response(
         {"success": success, "message": message},
-        status_code=200 if success else 400,
+        200 if success else 400,
     )
 
 
@@ -57,6 +57,6 @@ async def get_weights_checksum(request: Request):
     try:
         response = await async_scheduler_client.forward(req)
     except Exception as e:
-        return SGLangORJSONResponse({"error": str(e)}, status_code=500)
+        return orjson_response({"error": str(e)}, 500)
 
-    return SGLangORJSONResponse(response.output, status_code=200)
+    return orjson_response(response.output, 200)

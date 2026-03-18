@@ -38,7 +38,6 @@ from sglang.srt.entrypoints.openai.protocol import (
 )
 from sglang.srt.entrypoints.openai.serving_base import OpenAIServingBase
 from sglang.srt.managers.io_struct import GenerateReqInput
-from sglang.srt.utils.json_response import SGLangORJSONResponse
 
 if TYPE_CHECKING:
     from sglang.srt.managers.tokenizer_manager import TokenizerManager
@@ -106,9 +105,7 @@ class OpenAIServingTranscription(OpenAIServingBase):
         temperature: float,
         stream: bool,
         raw_request: Request,
-    ) -> Union[
-        TranscriptionResponse, StreamingResponse, Response, SGLangORJSONResponse
-    ]:
+    ) -> Union[TranscriptionResponse, StreamingResponse, Response]:
         """Main entry point for transcription requests."""
         # Calculate audio duration for usage reporting
         audio_duration_s = self._get_audio_duration(audio_data)
@@ -132,7 +129,7 @@ class OpenAIServingTranscription(OpenAIServingBase):
         adapted_request: GenerateReqInput,
         request: TranscriptionRequest,
         raw_request: Request,
-    ) -> Union[TranscriptionResponse, ErrorResponse, SGLangORJSONResponse, Response]:
+    ) -> Union[TranscriptionResponse, ErrorResponse, Response]:
         """Handle non-streaming transcription request."""
         try:
             ret = await self.tokenizer_manager.generate_request(

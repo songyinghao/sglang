@@ -8,14 +8,14 @@ from typing import TYPE_CHECKING, Any, List, Optional, Tuple, Union
 
 import orjson
 from fastapi import HTTPException, Request
-from fastapi.responses import StreamingResponse
+from fastapi.responses import Response, StreamingResponse
 
 from sglang.srt.entrypoints.openai.encoding_dsv32 import DS32EncodingError
 from sglang.srt.entrypoints.openai.protocol import ErrorResponse, OpenAIServingRequest
 from sglang.srt.managers.io_struct import EmbeddingReqInput, GenerateReqInput
 from sglang.srt.observability.req_time_stats import monotonic_time
 from sglang.srt.server_args import ServerArgs
-from sglang.srt.utils.json_response import SGLangORJSONResponse
+from sglang.srt.utils.json_response import orjson_response
 
 if TYPE_CHECKING:
     from sglang.srt.managers.tokenizer_manager import TokenizerManager
@@ -176,7 +176,7 @@ class OpenAIServingBase(ABC):
         adapted_request: GenerateReqInput,
         request: OpenAIServingRequest,
         raw_request: Request,
-    ) -> Union[StreamingResponse, ErrorResponse, SGLangORJSONResponse]:
+    ) -> Union[StreamingResponse, ErrorResponse, Response]:
         """Handle streaming request
 
         Override this method in child classes that support streaming requests.
@@ -192,7 +192,7 @@ class OpenAIServingBase(ABC):
         adapted_request: GenerateReqInput,
         request: OpenAIServingRequest,
         raw_request: Request,
-    ) -> Union[Any, ErrorResponse, SGLangORJSONResponse]:
+    ) -> Union[Any, ErrorResponse, Response]:
         """Handle non-streaming request
 
         Override this method in child classes that support non-streaming requests.
@@ -213,7 +213,7 @@ class OpenAIServingBase(ABC):
         err_type: str = "BadRequestError",
         status_code: int = 400,
         param: Optional[str] = None,
-    ) -> SGLangORJSONResponse:
+    ) -> Response:
         """Create an error response"""
         # TODO: remove fastapi dependency in openai and move response handling to the entrypoint
         error = ErrorResponse(
@@ -223,7 +223,7 @@ class OpenAIServingBase(ABC):
             param=param,
             code=status_code,
         )
-        return SGLangORJSONResponse(content=error.model_dump(), status_code=status_code)
+        return orjson_response(error.model_dump(), status_code)
 
     def create_streaming_error_response(
         self,

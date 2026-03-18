@@ -49,7 +49,7 @@ from sglang.srt.utils import (
     load_video,
     random_uuid,
 )
-from sglang.srt.utils.json_response import SGLangORJSONResponse
+from sglang.srt.utils.json_response import orjson_response
 from sglang.srt.utils.network import (
     NetworkAddress,
     config_socket,
@@ -1382,9 +1382,9 @@ async def handle_encode_request(request: dict):
                             prefill_host=request["prefill_host"],
                             embedding_port=port,
                         )
-            return SGLangORJSONResponse(
-                status_code=error_code,
-                content={"status": "error", "message": error_msg, "req_id": req_id},
+            return orjson_response(
+                {"status": "error", "message": error_msg, "req_id": req_id},
+                error_code,
             )
         if encoder.server_args.encoder_transfer_backend == "mooncake":
             del request["mm_items"]
@@ -1395,7 +1395,7 @@ async def handle_encode_request(request: dict):
                     "embedding_dim": embedding_dim,
                 }
             )
-            return SGLangORJSONResponse(content=request)
+            return orjson_response(request)
         elif encoder.server_args.encoder_transfer_backend == "zmq_to_scheduler":
             logger.info(f"{request['embedding_port'] = }")
             if request["embedding_port"] is None:
@@ -1415,7 +1415,7 @@ async def handle_encode_request(request: dict):
                     )
                 await asyncio.gather(*tasks)
                 encoder.embedding_to_send.pop(request["req_id"], None)
-            return SGLangORJSONResponse(content=None)
+            return orjson_response(None)
         elif encoder.server_args.encoder_transfer_backend == "zmq_to_tokenizer":
             await encoder.send(
                 req_id=request["req_id"],
@@ -1423,18 +1423,18 @@ async def handle_encode_request(request: dict):
                 embedding_port=request["embedding_port"],
             )
             encoder.embedding_to_send.pop(request["req_id"], None)
-            return SGLangORJSONResponse(content=None)
+            return orjson_response(None)
     except Exception as e:
         error_msg = str(e)
         logger.error(f"Unexpected error in encoder logic for {req_id}: {error_msg}")
         rid_to_err_msg[req_id] = error_msg
-        return SGLangORJSONResponse(
-            status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
-            content={
+        return orjson_response(
+            {
                 "status": "error",
                 "message": error_msg,
                 "req_id": req_id,
             },
+            HTTPStatus.INTERNAL_SERVER_ERROR,
         )
 
 
@@ -1449,7 +1449,7 @@ async def handle_send_request(request: dict):
         buffer_address=request["buffer_address"],
     )
     encoder.embedding_to_send.pop(request["req_id"], None)
-    return SGLangORJSONResponse(content=None)
+    return orjson_response(None)
 
 
 @app.post("/scheduler_receive_url")

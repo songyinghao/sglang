@@ -4,7 +4,6 @@ import numpy as np
 import orjson
 
 from sglang.srt.utils.json_response import (
-    SGLangORJSONResponse,
     dumps_json,
     orjson_response,
 )
@@ -44,8 +43,8 @@ class TestJSONResponseUtils(unittest.TestCase):
         self.assertEqual(response.media_type, "application/json")
         self.assertIsNone(parsed["value"])
 
-    def test_sglang_orjson_response_serializes_with_shared_options(self):
-        response = SGLangORJSONResponse(content={"value": float("-inf")})
+    def test_orjson_response_serializes_with_shared_options(self):
+        response = orjson_response({"value": float("-inf")})
         parsed = orjson.loads(response.body)
 
         self.assertIsNone(parsed["value"])

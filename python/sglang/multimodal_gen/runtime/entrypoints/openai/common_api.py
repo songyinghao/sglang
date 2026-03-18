@@ -16,7 +16,7 @@ from sglang.multimodal_gen.runtime.pipelines_core.schedule_batch import OutputBa
 from sglang.multimodal_gen.runtime.scheduler_client import async_scheduler_client
 from sglang.multimodal_gen.runtime.server_args import get_global_server_args
 from sglang.multimodal_gen.runtime.utils.logging_utils import init_logger
-from sglang.srt.utils.json_response import SGLangORJSONResponse
+from sglang.srt.utils.json_response import orjson_response
 
 router = APIRouter(prefix="/v1")
 logger = init_logger(__name__)
@@ -173,7 +173,7 @@ async def list_loras():
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/models", response_class=SGLangORJSONResponse)
+@router.get("/models")
 async def available_models():
     """Show available models. OpenAI-compatible endpoint with extended diffusion info."""
     server_args = get_global_server_args()
@@ -203,10 +203,10 @@ async def available_models():
     model_card = DiffusionModelCard(**card_kwargs)
 
     # Return dict directly to preserve extended fields (ModelList strips them)
-    return {"object": "list", "data": [model_card.model_dump()]}
+    return orjson_response({"object": "list", "data": [model_card.model_dump()]})
 
 
-@router.get("/models/{model:path}", response_class=SGLangORJSONResponse)
+@router.get("/models/{model:path}")
 async def retrieve_model(model: str):
     """Retrieve a model instance. OpenAI-compatible endpoint with extended diffusion info."""
     server_args = get_global_server_args()
@@ -214,9 +214,8 @@ async def retrieve_model(model: str):
         raise HTTPException(status_code=500, detail="Server args not initialized")
 
     if model != server_args.model_path:
-        return SGLangORJSONResponse(
-            status_code=404,
-            content={
+        return orjson_response(
+            {
                 "error": {
                     "message": f"The model '{model}' does not exist",
                     "type": "invalid_request_error",
@@ -224,6 +223,7 @@ async def retrieve_model(model: str):
                     "code": "model_not_found",
                 }
             },
+            404,
         )
 
     model_info = get_model_info(
@@ -246,4 +246,4 @@ async def retrieve_model(model: str):
         card_kwargs["pipeline_class"] = model_info.pipeline_cls.__name__
 
     # Return dict to preserve extended fields
-    return DiffusionModelCard(**card_kwargs).model_dump()
+    return orjson_response(DiffusionModelCard(**card_kwargs).model_dump())
