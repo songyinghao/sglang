@@ -17,7 +17,7 @@ concurrency:
 
 env:
   SGLANG_IS_IN_CI: true
-  SRT_SLURM_BRANCH: test-dynamo-1.0.0
+  SRT_SLURM_BRANCH: sa-submission-q1-2026
   SLURM_PARTITION: batch
   SLURM_ACCOUNT: sglang
 
@@ -56,7 +56,7 @@ jobs:
       squash_file: ${{ steps.import.outputs.squash_file }}
       nginx_squash_file: ${{ steps.import.outputs.nginx_squash_file }}
     env:
-      IMAGE: lmsysorg/sglang:dev-cu13
+      IMAGE: lmsysorg/sglang:v0.5.8-cu130
       NGINX_IMAGE: nginx:1.27.4
     steps:
       - name: Import Docker images to Lustre
