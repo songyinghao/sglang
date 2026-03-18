@@ -282,9 +282,7 @@ def _get_ref_image_path(config: dict) -> str:
 # ---------------------------------------------------------------------------
 
 
-def _build_sglang_payload(
-    case: dict, perf_dump_path: str | None = None
-) -> dict:
+def _build_sglang_payload(case: dict) -> dict:
     """Build common SGLang request payload."""
     payload = {
         "model": case["model"],
@@ -296,21 +294,26 @@ def _build_sglang_payload(
     for key in ("num_inference_steps", "guidance_scale", "seed", "num_frames"):
         if key in case:
             payload[key] = case[key]
-    if perf_dump_path:
-        payload["perf_dump_path"] = perf_dump_path
     return payload
 
 
-def _read_perf_dump(perf_dump_path: str) -> float | None:
-    """Read total_duration_ms from a perf dump JSON file."""
-    try:
-        with open(perf_dump_path) as f:
-            data = json.load(f)
-        total_ms = data.get("total_duration_ms")
-        if total_ms is not None:
-            return total_ms / 1000.0  # convert to seconds
-    except Exception as e:
-        print(f"  Warning: failed to read perf dump {perf_dump_path}: {e}")
+def _read_perf_dump(perf_dump_path: str, timeout: float = 10.0) -> float | None:
+    """Read total_duration_ms from a perf dump JSON written by the server.
+
+    The server writes the file asynchronously after the HTTP response,
+    so we poll briefly.
+    """
+    deadline = time.time() + timeout
+    while time.time() < deadline:
+        try:
+            with open(perf_dump_path) as f:
+                data = json.load(f)
+            total_ms = data.get("total_duration_ms")
+            if total_ms is not None:
+                return total_ms / 1000.0
+        except (FileNotFoundError, json.JSONDecodeError):
+            pass
+        time.sleep(0.5)
     return None
 
 
@@ -318,7 +321,9 @@ def send_image_request_sglang(
     base_url: str, case: dict, perf_dump_path: str | None = None
 ) -> float:
     """Send a single T2I request via SGLang's /v1/images/generations."""
-    payload = _build_sglang_payload(case, perf_dump_path)
+    payload = _build_sglang_payload(case)
+    if perf_dump_path:
+        payload["perf_dump_path"] = perf_dump_path
 
     start = time.time()
     resp = requests.post(
@@ -332,7 +337,6 @@ def send_image_request_sglang(
     if "data" not in data or len(data["data"]) == 0:
         raise RuntimeError(f"Image request returned no data: {data}")
 
-    # Prefer server-side perf dump over client-side timing
     if perf_dump_path:
         server_latency = _read_perf_dump(perf_dump_path)
         if server_latency is not None:
@@ -349,7 +353,9 @@ def send_video_request_sglang(
     base_url: str, case: dict, perf_dump_path: str | None = None
 ) -> float:
     """Send a single T2V request via SGLang's /v1/videos/generations (async)."""
-    payload = _build_sglang_payload(case, perf_dump_path)
+    payload = _build_sglang_payload(case)
+    if perf_dump_path:
+        payload["perf_dump_path"] = perf_dump_path
 
     start = time.time()
 
@@ -415,7 +421,6 @@ def send_image_conditioned_request_sglang(
             data[key] = str(case[key])
     if perf_dump_path:
         data["perf_dump_path"] = perf_dump_path
-
     # Choose endpoint based on task
     if task in ("image-edit", "image-to-image"):
         endpoint = "/v1/images/edits"
@@ -602,7 +607,7 @@ def send_request(
         return send_request_vllm_omni(base_url, case, config)
     elif framework == "lightx2v":
         return send_request_lightx2v(base_url, case, config)
-    # SGLang — use OpenAI-compatible endpoints with optional perf dump
+    # SGLang — use OpenAI-compatible endpoints with optional perf log
     task = case["task"]
     if case.get("reference_image"):
         return send_image_conditioned_request_sglang(
@@ -645,6 +650,13 @@ def run_single(
     env = os.environ.copy()
     env.update(fw_cfg.get("extra_env", {}))
 
+    # perf_dump_path for SGLang server-side timing (passed in request, zero overhead when None)
+    perf_dump_path = None
+    if framework == "sglang":
+        perf_dump_path = os.path.join(
+            str(log_dir), f"perf_{case['id']}_measured.json"
+        )
+
     log_file = log_dir / f"{case['id']}_{framework}.log"
     log_fh = open(log_file, "w", encoding="utf-8", buffering=1)
     log_thread = None
@@ -680,27 +692,22 @@ def run_single(
         base_url = f"http://{DEFAULT_HOST}:{port}"
         wait_for_health(base_url, framework)
 
-        # Warmup request (not measured, no perf dump)
-        print("  Sending warmup request...")
-        try:
-            send_request(base_url, case, framework, config)
-        except Exception as e:
-            print(f"  Warmup request failed (non-fatal): {e}")
+        # Warmup requests (not measured, no perf dump)
+        # Send 2 warmup requests to ensure all torch.compile/triton kernel
+        # specializations are covered before the measured request.
+        for wi in range(1, 3):
+            print(f"  Sending warmup request ({wi}/2)...")
+            try:
+                send_request(base_url, case, framework, config)
+            except Exception as e:
+                print(f"  Warmup request {wi} failed (non-fatal): {e}")
 
-        # Measured request — use perf_dump_path for SGLang server-side timing
-        perf_path = None
-        if framework == "sglang":
-            perf_path = os.path.join(
-                tempfile.gettempdir(),
-                f"comparison_perf_{case['id']}.json",
-            )
-            # Remove stale dump from warmup
-            if os.path.exists(perf_path):
-                os.remove(perf_path)
-
+        # Measured request — pass perf_dump_path for SGLang server-side timing
+        if perf_dump_path and os.path.exists(perf_dump_path):
+            os.remove(perf_dump_path)
         print("  Sending measured request...")
         latency = send_request(
-            base_url, case, framework, config, perf_dump_path=perf_path
+            base_url, case, framework, config, perf_dump_path=perf_dump_path
         )
         result["latency_s"] = round(latency, 3)
 
