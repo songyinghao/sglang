@@ -56,6 +56,29 @@ def qwen_image_postprocess_text(outputs, _text_inputs, drop_idx=34):
     return prompt_embeds
 
 
+def qwen_image_postprocess_text_with_mask(outputs, _text_inputs, drop_idx=34):
+    hidden_states = outputs.hidden_states[-1]
+    split_hidden_states = _extract_masked_hidden(
+        hidden_states, _text_inputs.attention_mask
+    )
+    split_hidden_states = [e[drop_idx:] for e in split_hidden_states]
+    attn_mask_list = [
+        torch.ones(e.size(0), dtype=torch.long, device=e.device)
+        for e in split_hidden_states
+    ]
+    max_seq_len = max([e.size(0) for e in split_hidden_states])
+    prompt_embeds = torch.stack(
+        [
+            torch.cat([u, u.new_zeros(max_seq_len - u.size(0), u.size(1))])
+            for u in split_hidden_states
+        ]
+    )
+    encoder_attention_mask = torch.stack(
+        [torch.cat([u, u.new_zeros(max_seq_len - u.size(0))]) for u in attn_mask_list]
+    )
+    return prompt_embeds, encoder_attention_mask
+
+
 def _normalize_prompt_list(prompt):
     return [prompt] if isinstance(prompt, str) else prompt
 
@@ -129,7 +152,7 @@ class QwenImagePipelineConfig(ImagePipelineConfig):
     )
 
     postprocess_text_funcs: tuple[Callable[[str], str], ...] = field(
-        default_factory=lambda: (qwen_image_postprocess_text,)
+        default_factory=lambda: (qwen_image_postprocess_text_with_mask,)
     )
     text_encoder_extra_args: list[dict] = field(
         default_factory=lambda: [

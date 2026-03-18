@@ -14,6 +14,9 @@ import torch
 from sglang.multimodal_gen.configs.models.encoders import BaseEncoderOutput
 from sglang.multimodal_gen.configs.pipeline_configs import FluxPipelineConfig
 from sglang.multimodal_gen.configs.pipeline_configs.flux import Flux2PipelineConfig
+from sglang.multimodal_gen.configs.pipeline_configs.qwen_image import (
+    QwenImagePipelineConfig,
+)
 from sglang.multimodal_gen.runtime.distributed import (
     get_local_torch_device,
     get_sp_parallel_rank,
@@ -32,6 +35,11 @@ from sglang.multimodal_gen.runtime.server_args import ServerArgs
 from sglang.multimodal_gen.runtime.utils.logging_utils import init_logger
 
 logger = init_logger(__name__)
+
+
+def _env_flag(name: str) -> bool:
+    value = os.environ.get(name)
+    return value is not None and value.lower() not in ("0", "false", "no", "")
 
 
 def _maybe_dump_text_stage_outputs(
