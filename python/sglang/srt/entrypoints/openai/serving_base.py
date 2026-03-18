@@ -10,13 +10,12 @@ import orjson
 from fastapi import HTTPException, Request
 from fastapi.responses import StreamingResponse
 
-from sglang.srt.utils.json_response import SGLangORJSONResponse
-
 from sglang.srt.entrypoints.openai.encoding_dsv32 import DS32EncodingError
 from sglang.srt.entrypoints.openai.protocol import ErrorResponse, OpenAIServingRequest
 from sglang.srt.managers.io_struct import EmbeddingReqInput, GenerateReqInput
 from sglang.srt.observability.req_time_stats import monotonic_time
 from sglang.srt.server_args import ServerArgs
+from sglang.srt.utils.json_response import SGLangORJSONResponse
 
 if TYPE_CHECKING:
     from sglang.srt.managers.tokenizer_manager import TokenizerManager

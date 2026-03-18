@@ -27,8 +27,6 @@ from typing import TYPE_CHECKING, AsyncGenerator, Optional, Union
 from fastapi import Request
 from fastapi.responses import Response, StreamingResponse
 
-from sglang.srt.utils.json_response import SGLangORJSONResponse
-
 from sglang.srt.entrypoints.openai.protocol import (
     DeltaMessage,
     ErrorResponse,
@@ -40,6 +38,7 @@ from sglang.srt.entrypoints.openai.protocol import (
 )
 from sglang.srt.entrypoints.openai.serving_base import OpenAIServingBase
 from sglang.srt.managers.io_struct import GenerateReqInput
+from sglang.srt.utils.json_response import SGLangORJSONResponse
 
 if TYPE_CHECKING:
     from sglang.srt.managers.tokenizer_manager import TokenizerManager
@@ -107,7 +106,9 @@ class OpenAIServingTranscription(OpenAIServingBase):
         temperature: float,
         stream: bool,
         raw_request: Request,
-    ) -> Union[TranscriptionResponse, StreamingResponse, Response, SGLangORJSONResponse]:
+    ) -> Union[
+        TranscriptionResponse, StreamingResponse, Response, SGLangORJSONResponse
+    ]:
         """Main entry point for transcription requests."""
         # Calculate audio duration for usage reporting
         audio_duration_s = self._get_audio_duration(audio_data)

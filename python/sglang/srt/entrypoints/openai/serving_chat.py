@@ -12,8 +12,6 @@ import jinja2
 import orjson
 from fastapi import Request
 from fastapi.responses import StreamingResponse
-
-from sglang.srt.utils.json_response import SGLangORJSONResponse
 from jsonschema import Draft202012Validator, SchemaError
 
 from sglang.srt.entrypoints.openai.encoding_dsv32 import encode_messages
@@ -53,6 +51,7 @@ from sglang.srt.managers.io_struct import GenerateReqInput
 from sglang.srt.parser.conversation import generate_chat_conv
 from sglang.srt.parser.jinja_template_utils import process_content_for_template_format
 from sglang.srt.parser.reasoning_parser import ReasoningParser
+from sglang.srt.utils.json_response import SGLangORJSONResponse
 
 if TYPE_CHECKING:
     from sglang.srt.managers.template_manager import TemplateManager

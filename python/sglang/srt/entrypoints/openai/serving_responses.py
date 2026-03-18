@@ -17,7 +17,6 @@ import jinja2
 import openai.types.responses as openai_responses_types
 import orjson
 from fastapi import Request
-from sglang.srt.utils.json_response import SGLangORJSONResponse
 from openai.types.responses import (
     ResponseOutputMessage,
     ResponseOutputText,
@@ -59,6 +58,7 @@ from sglang.srt.entrypoints.openai.tool_server import MCPToolServer, ToolServer
 from sglang.srt.managers.io_struct import GenerateReqInput
 from sglang.srt.parser.reasoning_parser import ReasoningParser
 from sglang.srt.utils import random_uuid
+from sglang.srt.utils.json_response import SGLangORJSONResponse
 
 if TYPE_CHECKING:
     from sglang.srt.managers.template_manager import TemplateManager
@@ -139,7 +139,9 @@ class OpenAIServingResponses(OpenAIServingChat):
             "param": param,
             "code": status_code,
         }
-        return SGLangORJSONResponse(content={"error": nested_error}, status_code=status_code)
+        return SGLangORJSONResponse(
+            content={"error": nested_error}, status_code=status_code
+        )
 
     def create_streaming_error_response(
         self,

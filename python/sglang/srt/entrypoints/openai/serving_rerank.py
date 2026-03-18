@@ -2,7 +2,6 @@ import logging
 from typing import Any, Dict, List, Optional, Union
 
 from fastapi import Request
-from sglang.srt.utils.json_response import SGLangORJSONResponse
 
 from sglang.srt.entrypoints.openai.protocol import (
     ChatCompletionMessageContentImagePart,
@@ -15,6 +14,7 @@ from sglang.srt.entrypoints.openai.protocol import (
 )
 from sglang.srt.entrypoints.openai.serving_base import OpenAIServingBase
 from sglang.srt.managers.io_struct import EmbeddingReqInput, GenerateReqInput
+from sglang.srt.utils.json_response import SGLangORJSONResponse
 
 logger = logging.getLogger(__name__)
 

@@ -17,8 +17,9 @@ import orjson
 import uvicorn
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import Response, StreamingResponse
-from sglang.srt.utils.json_response import SGLangORJSONResponse
 from sglang_router.router_args import RouterArgs
+
+from sglang.srt.utils.json_response import SGLangORJSONResponse
 
 logger = logging.getLogger(__name__)
 

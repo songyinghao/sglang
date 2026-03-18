@@ -154,8 +154,9 @@ def add_api_key_middleware(
 ):
     """Add middleware for three endpoint auth levels: normal/admin_optional/admin_force."""
     # Import lazily so `decide_request_auth()` can be unit-tested without FastAPI installed.
-    from sglang.srt.utils.json_response import SGLangORJSONResponse
     from starlette.requests import Request
+
+    from sglang.srt.utils.json_response import SGLangORJSONResponse
 
     class _ApiKeyASGIMiddleware:
         """ASGI-native middleware to preserve client disconnect events."""

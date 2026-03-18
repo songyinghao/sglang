@@ -8,8 +8,6 @@ from typing import TYPE_CHECKING, Any, AsyncGenerator, Dict, List, Optional, Uni
 from fastapi import Request
 from fastapi.responses import StreamingResponse
 
-from sglang.srt.utils.json_response import SGLangORJSONResponse
-
 from sglang.srt.entrypoints.openai.protocol import (
     CompletionRequest,
     CompletionResponse,
@@ -31,6 +29,7 @@ from sglang.srt.managers.io_struct import GenerateReqInput
 from sglang.srt.parser.code_completion_parser import (
     generate_completion_prompt_from_request,
 )
+from sglang.srt.utils.json_response import SGLangORJSONResponse
 from sglang.utils import convert_json_schema_to_str
 
 if TYPE_CHECKING:

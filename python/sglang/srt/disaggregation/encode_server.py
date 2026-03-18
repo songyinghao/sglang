@@ -18,8 +18,6 @@ import zmq
 import zmq.asyncio
 from fastapi import FastAPI
 from fastapi.responses import Response
-
-from sglang.srt.utils.json_response import SGLangORJSONResponse
 from transformers import AutoProcessor
 
 from sglang.srt.configs.device_config import DeviceConfig
@@ -51,6 +49,7 @@ from sglang.srt.utils import (
     load_video,
     random_uuid,
 )
+from sglang.srt.utils.json_response import SGLangORJSONResponse
 from sglang.srt.utils.network import (
     NetworkAddress,
     config_socket,

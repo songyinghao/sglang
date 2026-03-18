@@ -8,7 +8,6 @@ from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union
 import torch
 import torch.nn.functional as F
 from fastapi import Request
-from sglang.srt.utils.json_response import SGLangORJSONResponse
 
 from sglang.srt.entrypoints.openai.protocol import (
     ClassifyRequest,
@@ -17,6 +16,7 @@ from sglang.srt.entrypoints.openai.protocol import (
 )
 from sglang.srt.entrypoints.openai.serving_base import OpenAIServingBase
 from sglang.srt.managers.io_struct import EmbeddingReqInput
+from sglang.srt.utils.json_response import SGLangORJSONResponse
 
 if TYPE_CHECKING:
     from sglang.srt.managers.template_manager import TemplateManager
