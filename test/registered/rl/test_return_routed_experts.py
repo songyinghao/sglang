@@ -75,6 +75,8 @@ class TestReturnRoutedExperts(CustomTestCase):
     @classmethod
     def setUpClass(cls):
 
+        tp = 2 if is_in_amd_ci() else 4
+        dp = 2 if is_in_amd_ci() else 4
         cls.baseline_args = [
             "--enable-return-routed-experts",
             "--enable-deterministic-inference",
@@ -82,18 +84,18 @@ class TestReturnRoutedExperts(CustomTestCase):
             "--disable-cuda-graph",
             "--disable-radix-cache",
             "--tp",
-            4,
+            tp,
             "--dp",
-            4,
+            dp,
             "--enable-dp-attention",
         ]
         cls.reference_args = [
             "--enable-return-routed-experts",
             "--enable-deterministic-inference",
             "--tp",
-            4,
+            tp,
             "--dp",
-            4,
+            dp,
             "--enable-dp-attention",
         ]
         cls.sampling_args = {
