@@ -108,11 +108,13 @@ class TestEAGLE3EngineDPAttention(CustomTestCase):
                 f"{avg_spec_accept_length=:.2f}\n"
             )
             if is_in_amd_ci():
+                # AMD triton backend produces slightly lower accuracy than FA3 on NVIDIA
                 self.assertGreater(metrics["accuracy"], 0.88)
             else:
                 self.assertGreater(metrics["accuracy"], 0.91)
             if avg_spec_accept_length is not None:
                 if is_in_amd_ci():
+                    # AMD triton backend produces slightly lower accept length than FA3 on NVIDIA
                     self.assertGreater(avg_spec_accept_length, 2.0)
                 else:
                     self.assertGreater(avg_spec_accept_length, 2.5)

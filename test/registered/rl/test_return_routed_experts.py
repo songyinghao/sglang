@@ -19,6 +19,8 @@ from sglang.test.test_utils import (
     DEFAULT_TIMEOUT_FOR_SERVER_LAUNCH,
     DEFAULT_URL_FOR_TEST,
     CustomTestCase,
+    get_amd_4gpu_env,
+    get_amd_4gpu_server_args,
     is_in_amd_ci,
     popen_launch_server,
 )
@@ -38,36 +40,6 @@ AMD_CI_MAX_NEW_TOKENS = 48
 AMD_CI_TIMEOUT = "1200"
 
 
-def _get_server_env():
-    if not is_in_amd_ci():
-        return None
-
-    env = os.environ.copy()
-    env["NCCL_CUMEM_ENABLE"] = "0"
-    env["NCCL_NVLS_ENABLE"] = "0"
-    env["RCCL_MSCCL_ENABLE"] = "0"
-    env["SGLANG_USE_ROCM700A"] = "1"
-    env["SGLANG_USE_AITER"] = "0"
-    return env
-
-
-def _extend_amd_server_args(other_args):
-    server_args = list(other_args)
-    if is_in_amd_ci():
-        server_args.extend(
-            [
-                "--attention-backend",
-                "triton",
-                "--mem-fraction-static",
-                "0.70",
-                "--watchdog-timeout",
-                AMD_CI_TIMEOUT,
-                "--dist-timeout",
-                AMD_CI_TIMEOUT,
-                "--disable-custom-all-reduce",
-            ]
-        )
-    return server_args
 
 
 class TestReturnRoutedExperts(CustomTestCase):
@@ -192,12 +164,14 @@ class TestReturnRoutedExperts(CustomTestCase):
         cls,
         other_args,
     ):
+        server_args = list(other_args)
+        server_args.extend(get_amd_4gpu_server_args(mem_fraction="0.70"))
         process = popen_launch_server(
             DEFAULT_ENABLE_ROUTED_EXPERTS_MODEL_NAME_FOR_TEST,
             DEFAULT_URL_FOR_TEST,
             timeout=DEFAULT_TIMEOUT_FOR_SERVER_LAUNCH,
-            other_args=_extend_amd_server_args(other_args),
-            env=_get_server_env(),
+            other_args=server_args,
+            env=get_amd_4gpu_env(),
         )
         try:
             return asyncio.run(cls._collect_results_async())
@@ -257,11 +231,16 @@ class TestReturnRoutedExperts(CustomTestCase):
         }
 
 
-async def make_request(session, url, payload, semaphore):
+async def make_request(session, url, payload, semaphore=None):
     """Make a single async HTTP request"""
-    async with semaphore:
+    async def _do_request():
         async with session.post(url=url, json=payload) as response:
             return await response.json()
+
+    if semaphore is not None:
+        async with semaphore:
+            return await _do_request()
+    return await _do_request()
 
 
 def extract_routed_experts_from_openai_response(response):

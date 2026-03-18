@@ -196,6 +196,36 @@ def is_in_amd_ci():
     return get_bool_env_var("SGLANG_IS_IN_CI_AMD")
 
 
+def get_amd_4gpu_env(extra: Optional[dict] = None) -> Optional[dict]:
+    """Return env dict for AMD 4-GPU tests, or None if not in AMD CI."""
+    if not is_in_amd_ci():
+        return None
+    env = os.environ.copy()
+    env.update({
+        "NCCL_CUMEM_ENABLE": "0",
+        "NCCL_NVLS_ENABLE": "0",
+        "RCCL_MSCCL_ENABLE": "0",
+        "SGLANG_USE_ROCM700A": "1",
+        "SGLANG_USE_AITER": "0",
+    })
+    if extra:
+        env.update(extra)
+    return env
+
+
+def get_amd_4gpu_server_args(mem_fraction="0.60", timeout="1200") -> list:
+    """Return additional server args for AMD 4-GPU tests."""
+    if not is_in_amd_ci():
+        return []
+    return [
+        "--attention-backend", "triton",
+        "--mem-fraction-static", mem_fraction,
+        "--watchdog-timeout", timeout,
+        "--dist-timeout", timeout,
+        "--disable-custom-all-reduce",
+    ]
+
+
 def is_blackwell_system():
     """Return whether it is running on a Blackwell (B200) system."""
     return envs.IS_BLACKWELL.get()

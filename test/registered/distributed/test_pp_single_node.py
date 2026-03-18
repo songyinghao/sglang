@@ -27,6 +27,8 @@ from sglang.test.test_utils import (
     DEFAULT_TIMEOUT_FOR_SERVER_LAUNCH,
     DEFAULT_URL_FOR_TEST,
     CustomTestCase,
+    get_amd_4gpu_env,
+    get_amd_4gpu_server_args,
     is_in_amd_ci,
     is_in_ci,
     popen_launch_server,
@@ -37,15 +39,6 @@ register_cuda_ci(est_time=500, suite="stage-c-test-4-gpu-h100")
 register_amd_ci(est_time=500, suite="stage-c-test-4-gpu-amd")
 
 
-def _get_amd_triton_env():
-    if not is_in_amd_ci():
-        return None
-
-    env = os.environ.copy()
-    # AMD CI sets SGLANG_USE_AITER=1 globally; override it here so PP VLM
-    # accuracy is measured with the explicit triton backend instead.
-    env["SGLANG_USE_AITER"] = "0"
-    return env
 
 
 class TestPPAccuracy(unittest.TestCase):
@@ -84,6 +77,7 @@ class TestPPAccuracy(unittest.TestCase):
         print(f"{metrics=}")
 
         if is_in_amd_ci():
+            # AMD triton backend produces slightly lower accuracy than FA3 on NVIDIA
             self.assertGreater(metrics["accuracy"], 0.70)
         else:
             self.assertGreater(metrics["accuracy"], 0.74)
@@ -161,21 +155,21 @@ class TestQwenVLPPAccuracy(unittest.TestCase):
         cls.base_url = "http://127.0.0.1:23333"
         other_args = [
             "--tp-size",
-            1,
+            "1",
             "--pp-size",
-            4,
+            "4",
             "--chunked-prefill-size",
-            8192,
+            "8192",
             "--enable-multimodal",
         ]
         if is_in_amd_ci():
-            other_args.extend(["--attention-backend", "triton"])
+            other_args.extend(get_amd_4gpu_server_args())
         cls.process = popen_launch_server(
             DEFAULT_MODEL_NAME_FOR_TEST_VL_PP,
             cls.base_url,
             timeout=DEFAULT_TIMEOUT_FOR_SERVER_LAUNCH,
             other_args=other_args,
-            env=_get_amd_triton_env(),
+            env=get_amd_4gpu_env(extra={"SGLANG_USE_AITER": "0"}),
         )
 
     def test_gsm8k(self):
@@ -192,6 +186,7 @@ class TestQwenVLPPAccuracy(unittest.TestCase):
         print(f"{metrics=}")
 
         if is_in_amd_ci():
+            # AMD triton backend produces slightly lower accuracy than FA3 on NVIDIA
             self.assertGreater(metrics["accuracy"], 0.58)
         else:
             self.assertGreater(metrics["accuracy"], 0.65)

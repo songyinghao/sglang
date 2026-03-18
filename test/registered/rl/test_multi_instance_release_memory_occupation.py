@@ -19,6 +19,7 @@ from sglang.test.test_utils import (
     DEFAULT_SMALL_MODEL_NAME_FOR_TEST_BASE,
     CustomTestCase,
     find_available_port,
+    get_amd_4gpu_env,
     is_in_amd_ci,
 )
 
@@ -29,6 +30,7 @@ register_amd_ci(
     disabled="Multi-process engine startup crash on AMD (torch_memory_saver incompatible with ROCm)",
 )
 
+# TODO: used when test is re-enabled on AMD
 AMD_DIST_TIMEOUT = timedelta(minutes=20)
 
 TEST_SUITE = dict(
@@ -40,14 +42,9 @@ TEST_SUITE = dict(
 
 
 def _configure_amd_distributed_env():
-    if not is_in_amd_ci():
-        return
-
-    os.environ["NCCL_CUMEM_ENABLE"] = "0"
-    os.environ["NCCL_NVLS_ENABLE"] = "0"
-    os.environ["RCCL_MSCCL_ENABLE"] = "0"
-    os.environ["SGLANG_USE_AITER"] = "0"
-    os.environ["SGLANG_MEMORY_SAVER_CUDA_GRAPH"] = "1"
+    env = get_amd_4gpu_env(extra={"SGLANG_MEMORY_SAVER_CUDA_GRAPH": "1"})
+    if env:
+        os.environ.update(env)
 
 
 class EngineWrapper:
