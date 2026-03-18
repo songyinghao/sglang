@@ -69,13 +69,21 @@ def serve(args, extra_argv):
             pass  # argparse --help calls sys.exit
 
         print("\n--- Help for Diffusion Model Server ---")
-        from sglang.multimodal_gen.runtime.entrypoints.cli.serve import (
-            add_multimodal_gen_serve_args,
-        )
+        try:
+            from sglang.multimodal_gen.runtime.entrypoints.cli.serve import (
+                add_multimodal_gen_serve_args,
+            )
 
-        parser = argparse.ArgumentParser(description="SGLang Diffusion Model Serving")
-        add_multimodal_gen_serve_args(parser)
-        parser.print_help()
+            parser = argparse.ArgumentParser(
+                description="SGLang Diffusion Model Serving"
+            )
+            add_multimodal_gen_serve_args(parser)
+            parser.print_help()
+        except ImportError:
+            print(
+                "Diffusion model support is not available. "
+                'Install with: pip install "sglang[diffusion]"'
+            )
         return
 
     model_type, dispatch_argv = _extract_model_type_override(extra_argv)
