@@ -6,7 +6,9 @@ from http import HTTPStatus
 from typing import TYPE_CHECKING, Any, AsyncGenerator, Dict, List, Optional, Union
 
 from fastapi import Request
-from fastapi.responses import ORJSONResponse, StreamingResponse
+from fastapi.responses import StreamingResponse
+
+from sglang.srt.utils.json_response import SGLangORJSONResponse
 
 from sglang.srt.entrypoints.openai.protocol import (
     CompletionRequest,
@@ -393,7 +395,7 @@ class OpenAIServingCompletion(OpenAIServingBase):
         adapted_request: GenerateReqInput,
         request: CompletionRequest,
         raw_request: Request,
-    ) -> Union[CompletionResponse, ErrorResponse, ORJSONResponse]:
+    ) -> Union[CompletionResponse, ErrorResponse, SGLangORJSONResponse]:
         """Handle non-streaming completion request"""
         try:
             generator = self.tokenizer_manager.generate_request(

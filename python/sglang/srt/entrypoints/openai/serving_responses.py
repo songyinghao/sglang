@@ -17,7 +17,7 @@ import jinja2
 import openai.types.responses as openai_responses_types
 import orjson
 from fastapi import Request
-from fastapi.responses import ORJSONResponse
+from sglang.srt.utils.json_response import SGLangORJSONResponse
 from openai.types.responses import (
     ResponseOutputMessage,
     ResponseOutputText,
@@ -132,14 +132,14 @@ class OpenAIServingResponses(OpenAIServingChat):
         err_type: str = "invalid_request_error",
         status_code: int = 400,
         param: Optional[str] = None,
-    ) -> ORJSONResponse:
+    ) -> SGLangORJSONResponse:
         nested_error = {
             "message": message,
             "type": err_type,
             "param": param,
             "code": status_code,
         }
-        return ORJSONResponse(content={"error": nested_error}, status_code=status_code)
+        return SGLangORJSONResponse(content={"error": nested_error}, status_code=status_code)
 
     def create_streaming_error_response(
         self,
@@ -165,7 +165,7 @@ class OpenAIServingResponses(OpenAIServingChat):
         self,
         request: ResponsesRequest,
         raw_request: Optional[Request] = None,
-    ) -> Union[AsyncGenerator[str, None], ResponsesResponse, ORJSONResponse]:
+    ) -> Union[AsyncGenerator[str, None], ResponsesResponse, SGLangORJSONResponse]:
         # Validate model
         if not self.tokenizer_manager:
             return self.create_error_response("Model not loaded")
@@ -354,7 +354,7 @@ class OpenAIServingResponses(OpenAIServingChat):
                     request_metadata,
                 )
             try:
-                result: Union[ORJSONResponse, ResponsesResponse] = (
+                result: Union[SGLangORJSONResponse, ResponsesResponse] = (
                     await self.responses_full_generator(
                         request,
                         sampling_params,
@@ -438,7 +438,7 @@ class OpenAIServingResponses(OpenAIServingChat):
         tokenizer: Any,
         request_metadata: RequestResponseMetadata,
         created_time: Optional[int] = None,
-    ) -> Union[ResponsesResponse, ORJSONResponse]:
+    ) -> Union[ResponsesResponse, SGLangORJSONResponse]:
         if created_time is None:
             created_time = int(time.time())
 
@@ -740,7 +740,7 @@ class OpenAIServingResponses(OpenAIServingChat):
             logger.exception("Background request failed for %s", request.request_id)
             response = self.create_error_response(str(e))
 
-        if isinstance(response, ORJSONResponse):
+        if isinstance(response, SGLangORJSONResponse):
             # If the request has failed, update the status to "failed"
             response_id = request.request_id
             async with self.response_store_lock:
@@ -752,7 +752,7 @@ class OpenAIServingResponses(OpenAIServingChat):
     async def retrieve_responses(
         self,
         response_id: str,
-    ) -> Union[ResponsesResponse, ORJSONResponse]:
+    ) -> Union[ResponsesResponse, SGLangORJSONResponse]:
         if not response_id.startswith("resp_"):
             return self._make_invalid_id_error(response_id)
 
@@ -766,7 +766,7 @@ class OpenAIServingResponses(OpenAIServingChat):
     async def cancel_responses(
         self,
         response_id: str,
-    ) -> Union[ResponsesResponse, ORJSONResponse]:
+    ) -> Union[ResponsesResponse, SGLangORJSONResponse]:
         if not response_id.startswith("resp_"):
             return self._make_invalid_id_error(response_id)
 

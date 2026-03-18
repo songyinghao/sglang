@@ -154,7 +154,7 @@ def add_api_key_middleware(
 ):
     """Add middleware for three endpoint auth levels: normal/admin_optional/admin_force."""
     # Import lazily so `decide_request_auth()` can be unit-tested without FastAPI installed.
-    from fastapi.responses import ORJSONResponse
+    from sglang.srt.utils.json_response import SGLangORJSONResponse
     from starlette.requests import Request
 
     class _ApiKeyASGIMiddleware:
@@ -185,7 +185,7 @@ def add_api_key_middleware(
             )
 
             if not decision.allowed:
-                response = ORJSONResponse(
+                response = SGLangORJSONResponse(
                     content={
                         "error": (
                             "Unauthorized"

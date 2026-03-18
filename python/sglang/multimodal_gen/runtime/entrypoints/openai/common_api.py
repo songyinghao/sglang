@@ -2,7 +2,7 @@ import time
 from typing import Any, List, Optional, Union
 
 from fastapi import APIRouter, Body, HTTPException
-from fastapi.responses import ORJSONResponse
+from sglang.srt.utils.json_response import SGLangORJSONResponse
 from pydantic import BaseModel, Field
 
 from sglang.multimodal_gen.registry import get_model_info
@@ -173,7 +173,7 @@ async def list_loras():
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/models", response_class=ORJSONResponse)
+@router.get("/models", response_class=SGLangORJSONResponse)
 async def available_models():
     """Show available models. OpenAI-compatible endpoint with extended diffusion info."""
     server_args = get_global_server_args()
@@ -206,7 +206,7 @@ async def available_models():
     return {"object": "list", "data": [model_card.model_dump()]}
 
 
-@router.get("/models/{model:path}", response_class=ORJSONResponse)
+@router.get("/models/{model:path}", response_class=SGLangORJSONResponse)
 async def retrieve_model(model: str):
     """Retrieve a model instance. OpenAI-compatible endpoint with extended diffusion info."""
     server_args = get_global_server_args()
@@ -214,7 +214,7 @@ async def retrieve_model(model: str):
         raise HTTPException(status_code=500, detail="Server args not initialized")
 
     if model != server_args.model_path:
-        return ORJSONResponse(
+        return SGLangORJSONResponse(
             status_code=404,
             content={
                 "error": {

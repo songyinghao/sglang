@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union
 import torch
 import torch.nn.functional as F
 from fastapi import Request
-from fastapi.responses import ORJSONResponse
+from sglang.srt.utils.json_response import SGLangORJSONResponse
 
 from sglang.srt.entrypoints.openai.protocol import (
     ClassifyRequest,
@@ -131,7 +131,7 @@ class OpenAIServingClassify(OpenAIServingBase):
         adapted_request: EmbeddingReqInput,
         request: ClassifyRequest,
         raw_request: Request,
-    ) -> Union[ClassifyResponse, ErrorResponse, ORJSONResponse]:
+    ) -> Union[ClassifyResponse, ErrorResponse, SGLangORJSONResponse]:
         """Handle non-streaming classification request."""
         # Generate request ID
 

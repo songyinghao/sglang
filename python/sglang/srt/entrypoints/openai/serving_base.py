@@ -8,7 +8,9 @@ from typing import TYPE_CHECKING, Any, List, Optional, Tuple, Union
 
 import orjson
 from fastapi import HTTPException, Request
-from fastapi.responses import ORJSONResponse, StreamingResponse
+from fastapi.responses import StreamingResponse
+
+from sglang.srt.utils.json_response import SGLangORJSONResponse
 
 from sglang.srt.entrypoints.openai.encoding_dsv32 import DS32EncodingError
 from sglang.srt.entrypoints.openai.protocol import ErrorResponse, OpenAIServingRequest
@@ -175,7 +177,7 @@ class OpenAIServingBase(ABC):
         adapted_request: GenerateReqInput,
         request: OpenAIServingRequest,
         raw_request: Request,
-    ) -> Union[StreamingResponse, ErrorResponse, ORJSONResponse]:
+    ) -> Union[StreamingResponse, ErrorResponse, SGLangORJSONResponse]:
         """Handle streaming request
 
         Override this method in child classes that support streaming requests.
@@ -191,7 +193,7 @@ class OpenAIServingBase(ABC):
         adapted_request: GenerateReqInput,
         request: OpenAIServingRequest,
         raw_request: Request,
-    ) -> Union[Any, ErrorResponse, ORJSONResponse]:
+    ) -> Union[Any, ErrorResponse, SGLangORJSONResponse]:
         """Handle non-streaming request
 
         Override this method in child classes that support non-streaming requests.
@@ -212,7 +214,7 @@ class OpenAIServingBase(ABC):
         err_type: str = "BadRequestError",
         status_code: int = 400,
         param: Optional[str] = None,
-    ) -> ORJSONResponse:
+    ) -> SGLangORJSONResponse:
         """Create an error response"""
         # TODO: remove fastapi dependency in openai and move response handling to the entrypoint
         error = ErrorResponse(
@@ -222,7 +224,7 @@ class OpenAIServingBase(ABC):
             param=param,
             code=status_code,
         )
-        return ORJSONResponse(content=error.model_dump(), status_code=status_code)
+        return SGLangORJSONResponse(content=error.model_dump(), status_code=status_code)
 
     def create_streaming_error_response(
         self,

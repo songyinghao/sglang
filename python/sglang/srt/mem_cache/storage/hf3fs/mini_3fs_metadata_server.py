@@ -10,7 +10,7 @@ from typing import Dict, List, Optional, Tuple
 import orjson
 import requests
 from fastapi import FastAPI, HTTPException, Request, Response
-from fastapi.responses import ORJSONResponse
+from sglang.srt.utils.json_response import SGLangORJSONResponse
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 
@@ -195,7 +195,7 @@ class Hf3fsMetadataServer:
 
     def __init__(self, persistence_path: Optional[str] = None, save_interval: int = 60):
         self.state = GlobalMetadataState(persistence_path, save_interval)
-        self.app = FastAPI(default_response_class=ORJSONResponse)
+        self.app = FastAPI(default_response_class=SGLangORJSONResponse)
 
         self._setup_routes()
 
@@ -226,8 +226,8 @@ class Hf3fsMetadataServer:
         return orjson.loads(body)
 
     def _json_response(self, content: dict):
-        """Return ORJSONResponse when available to bypass jsonable_encoder."""
-        return ORJSONResponse(content)
+        """Return SGLangORJSONResponse when available to bypass jsonable_encoder."""
+        return SGLangORJSONResponse(content)
 
     async def initialize(self, rank: int, request: Request):
         """Initialize a rank with specified number of pages."""

@@ -2,7 +2,7 @@ import logging
 from typing import Any, Dict, List, Optional, Union
 
 from fastapi import Request
-from fastapi.responses import ORJSONResponse
+from sglang.srt.utils.json_response import SGLangORJSONResponse
 
 from sglang.srt.entrypoints.openai.protocol import (
     ChatCompletionMessageContentImagePart,
@@ -280,7 +280,7 @@ class OpenAIServingRerank(OpenAIServingBase):
         adapted_request: Union[EmbeddingReqInput, V1RerankReqInput],
         request: V1RerankReqInput,
         raw_request: Request,
-    ) -> Union[List[RerankResponse], ErrorResponse, ORJSONResponse]:
+    ) -> Union[List[RerankResponse], ErrorResponse, SGLangORJSONResponse]:
         """Handle the rerank request"""
         chat_template = getattr(self.tokenizer_manager.tokenizer, "chat_template", None)
         model_path = getattr(self.tokenizer_manager.model_config, "model_path", "")
@@ -320,7 +320,7 @@ class OpenAIServingRerank(OpenAIServingBase):
         raw_request: Request,
         chat_template: Optional[str],
         model_path: str,
-    ) -> Optional[Union[List[RerankResponse], ErrorResponse, ORJSONResponse]]:
+    ) -> Optional[Union[List[RerankResponse], ErrorResponse, SGLangORJSONResponse]]:
         """
         Handle decoder-only rerank paths (VL/text) and return a response if matched.
 

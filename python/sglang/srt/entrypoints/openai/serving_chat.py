@@ -11,7 +11,9 @@ from typing import TYPE_CHECKING, Any, AsyncGenerator, Dict, List, Optional, Uni
 import jinja2
 import orjson
 from fastapi import Request
-from fastapi.responses import ORJSONResponse, StreamingResponse
+from fastapi.responses import StreamingResponse
+
+from sglang.srt.utils.json_response import SGLangORJSONResponse
 from jsonschema import Draft202012Validator, SchemaError
 
 from sglang.srt.entrypoints.openai.encoding_dsv32 import encode_messages
@@ -894,7 +896,7 @@ class OpenAIServingChat(OpenAIServingBase):
         adapted_request: GenerateReqInput,
         request: ChatCompletionRequest,
         raw_request: Request,
-    ) -> Union[ChatCompletionResponse, ErrorResponse, ORJSONResponse]:
+    ) -> Union[ChatCompletionResponse, ErrorResponse, SGLangORJSONResponse]:
         """Handle non-streaming chat completion request"""
         try:
             ret = await self.tokenizer_manager.generate_request(
@@ -919,7 +921,7 @@ class OpenAIServingChat(OpenAIServingBase):
         request: ChatCompletionRequest,
         ret: List[Dict[str, Any]],
         created: int,
-    ) -> Union[ChatCompletionResponse, ORJSONResponse]:
+    ) -> Union[ChatCompletionResponse, SGLangORJSONResponse]:
         """Build chat completion response from generation results"""
         choices = []
 
