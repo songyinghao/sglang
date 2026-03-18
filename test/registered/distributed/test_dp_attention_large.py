@@ -1,4 +1,3 @@
-import os
 import unittest
 from types import SimpleNamespace
 
@@ -26,39 +25,6 @@ from sglang.test.test_utils import (
 
 register_cuda_ci(est_time=350, suite="stage-c-test-4-gpu-h100")
 register_amd_ci(est_time=350, suite="stage-c-test-4-gpu-amd")
-
-AMD_4GPU_MEM_FRACTION = "0.60"
-AMD_4GPU_TIMEOUT = "1200"
-
-
-def _amd_dp_attention_env():
-    if not is_in_amd_ci():
-        return None
-
-    env = os.environ.copy()
-    env["NCCL_CUMEM_ENABLE"] = "0"
-    env["NCCL_NVLS_ENABLE"] = "0"
-    env["RCCL_MSCCL_ENABLE"] = "0"
-    env["SGLANG_USE_ROCM700A"] = "1"
-    env["SGLANG_USE_AITER"] = "0"
-    return env
-
-
-def _amd_dp_attention_args():
-    if not is_in_amd_ci():
-        return []
-
-    return [
-        "--attention-backend",
-        "triton",
-        "--mem-fraction-static",
-        AMD_4GPU_MEM_FRACTION,
-        "--watchdog-timeout",
-        AMD_4GPU_TIMEOUT,
-        "--dist-timeout",
-        AMD_4GPU_TIMEOUT,
-        "--disable-custom-all-reduce",
-    ]
 
 
 @unittest.skipIf(
@@ -174,27 +140,28 @@ class TestDPAttentionDP2TP2DeepseekV3MTP(
         self.assertGreater(avg_spec_accept_length, 2.5)
 
 
+@unittest.skipIf(
+    is_in_amd_ci(),
+    "Qwen3-VL-30B-A3B-Instruct OOMs at TP=4 DP=2 on MI325 4-GPU runners",
+)
 class TestDPAttentionDP2TP4VLM(CustomTestCase):
     @classmethod
     def setUpClass(cls):
         cls.model = "Qwen/Qwen3-VL-30B-A3B-Instruct"
         cls.base_url = DEFAULT_URL_FOR_TEST
         cls.image_url = DEFAULT_IMAGE_URL
-        other_args = [
-            "--trust-remote-code",
-            "--tp",
-            "4",
-            "--enable-dp-attention",
-            "--dp",
-            "2",
-        ]
-        other_args.extend(_amd_dp_attention_args())
         cls.process = popen_launch_server(
             cls.model,
             cls.base_url,
             timeout=DEFAULT_TIMEOUT_FOR_SERVER_LAUNCH,
-            other_args=other_args,
-            env=_amd_dp_attention_env(),
+            other_args=[
+                "--trust-remote-code",
+                "--tp",
+                "4",
+                "--enable-dp-attention",
+                "--dp",
+                "2",
+            ],
         )
 
     @classmethod
