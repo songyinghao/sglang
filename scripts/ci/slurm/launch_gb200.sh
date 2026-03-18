@@ -137,6 +137,8 @@ fi
 
 echo "Submitted Slurm job: $JOB_ID"
 
+set +x
+
 # ---------------------------------------------------------------------------
 # Wait for job and stream logs
 # ---------------------------------------------------------------------------
@@ -165,6 +167,8 @@ POLL_PID=$!
 tail -F -s 2 -n+1 "$LOG_FILE" --pid=$POLL_PID 2>/dev/null
 
 wait $POLL_PID
+
+set -x
 
 echo "Job $JOB_ID completed. Collecting results..."
 
