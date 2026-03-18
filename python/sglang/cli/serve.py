@@ -49,17 +49,13 @@ def serve(args, extra_argv):
         # we can't show the exact help. Instead, we show a general help message and then
         # the help for both possible server types.
         print(
-            "Usage: sglang serve --model-path <model-name-or-path> [additional-arguments]\n"
-        )
-        print(
-            "This command can launch either a standard language model server or a diffusion model server."
-        )
-        print("The server type is determined by the model path.\n")
-        print(
+            "Usage: sglang serve --model-path <model-name-or-path> [additional-arguments]\n\n"
+            "This command can launch either a standard language model server or a diffusion model server.\n"
+            "The server type is determined by the --model-path.\n"
             "Optional override: --model-type {auto,llm,diffusion} "
-            "(default: auto, fallback to LLM on detection failure).\n"
+            "(default: auto, fallback to LLM on detection failure)."
         )
-        print("For specific arguments, please provide a model_path.")
+
         print("\n--- Help for Standard Language Model Server ---")
         from sglang.srt.server_args import prepare_server_args
 
@@ -70,12 +66,19 @@ def serve(args, extra_argv):
 
         print("\n--- Help for Diffusion Model Server ---")
         try:
-            from sglang.multimodal_gen.runtime.entrypoints.cli.serve import (
-                add_multimodal_gen_serve_args,
-            )
+            # Suppress noisy logs (e.g. ROCm/CUDA detection) during import
+            _prev_level = logging.root.level
+            logging.root.setLevel(logging.WARNING)
+            try:
+                from sglang.multimodal_gen.runtime.entrypoints.cli.serve import (
+                    add_multimodal_gen_serve_args,
+                )
+            finally:
+                logging.root.setLevel(_prev_level)
 
             parser = argparse.ArgumentParser(
-                description="SGLang Diffusion Model Serving"
+                prog="sglang serve",
+                description="SGLang Diffusion Model Serving",
             )
             add_multimodal_gen_serve_args(parser)
             parser.print_help()

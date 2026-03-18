@@ -14,7 +14,7 @@
 # ==============================================================================
 
 import functools
-from typing import Dict, Tuple
+from typing import Callable, Dict, Tuple, TypeVar
 
 import torch
 
@@ -37,7 +37,27 @@ def _to_tensor_scalar_tuple(x):
         return (None, x)
 
 
-@functools.lru_cache(maxsize=1)
+F = TypeVar("F", bound=Callable)
+
+
+def cache_once(fn: F) -> F:
+    """
+    NOTE: `functools.lru_cache` is not compatible with `torch.compile`
+    So we manually implement a simple cache_once decorator to replace it.
+    """
+    result_map = {}
+
+    @functools.wraps(fn)
+    def wrapper(*args, **kwargs):
+        key = (args, tuple(sorted(kwargs.items(), key=lambda x: x[0])))
+        if key not in result_map:
+            result_map[key] = fn(*args, **kwargs)
+        return result_map[key]
+
+    return wrapper  # type: ignore
+
+
+@cache_once
 def is_arch_support_pdl() -> bool:
     # Hopper arch's compute capability == 9.0
     device = torch.cuda.current_device()
