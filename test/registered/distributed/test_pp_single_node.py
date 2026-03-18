@@ -214,7 +214,7 @@ class TestQwenPPAccuracy(unittest.TestCase):
             args = SimpleNamespace(
                 num_shots=5,
                 data_path=None,
-                num_questions=200,
+                num_questions=512,
                 max_new_tokens=512,
                 parallel=128,
                 host="http://127.0.0.1",
@@ -238,7 +238,7 @@ class TestQwenPPAccuracy(unittest.TestCase):
             pp_metrics["accuracy"],
             baseline["accuracy"] - 0.02,
             msg=(
-                f"PP accuracy dropped more than 1% compared to baseline. "
+                f"PP accuracy dropped more than 2% compared to baseline. "
                 f"Baseline: {baseline['accuracy']:.2%}, PP: {pp_metrics['accuracy']:.2%}"
             ),
         )
@@ -269,7 +269,7 @@ class TestQwenPPTieWeightsAccuracy(unittest.TestCase):
             args = SimpleNamespace(
                 num_shots=5,
                 data_path=None,
-                num_questions=200,
+                num_questions=512,
                 max_new_tokens=512,
                 parallel=128,
                 host="http://127.0.0.1",
@@ -292,7 +292,7 @@ class TestQwenPPTieWeightsAccuracy(unittest.TestCase):
             pp_metrics["accuracy"],
             baseline["accuracy"] - 0.02,
             msg=(
-                f"PP accuracy dropped more than 1% compared to baseline. "
+                f"PP accuracy dropped more than 2% compared to baseline. "
                 f"Baseline: {baseline['accuracy']:.2%}, PP: {pp_metrics['accuracy']:.2%}"
             ),
         )
@@ -321,7 +321,7 @@ class TestQwenMoePPAccuracy(unittest.TestCase):
             args = SimpleNamespace(
                 num_shots=5,
                 data_path=None,
-                num_questions=200,
+                num_questions=512,
                 max_new_tokens=512,
                 parallel=128,
                 host="http://127.0.0.1",
@@ -344,7 +344,7 @@ class TestQwenMoePPAccuracy(unittest.TestCase):
             pp_metrics["accuracy"],
             baseline["accuracy"] - 0.02,
             msg=(
-                f"PP accuracy dropped more than 1% compared to baseline. "
+                f"PP accuracy dropped more than 2% compared to baseline. "
                 f"Baseline: {baseline['accuracy']:.2%}, PP: {pp_metrics['accuracy']:.2%}"
             ),
         )
@@ -375,7 +375,7 @@ class TestQwen35PPAccuracy(unittest.TestCase):
             args = SimpleNamespace(
                 num_shots=5,
                 data_path=None,
-                num_questions=200,
+                num_questions=512,
                 max_new_tokens=512,
                 parallel=128,
                 host="http://127.0.0.1",
@@ -398,7 +398,7 @@ class TestQwen35PPAccuracy(unittest.TestCase):
             pp_metrics["accuracy"],
             baseline["accuracy"] - 0.02,
             msg=(
-                f"PP accuracy dropped more than 1% compared to baseline. "
+                f"PP accuracy dropped more than 2% compared to baseline. "
                 f"Baseline: {baseline['accuracy']:.2%}, PP: {pp_metrics['accuracy']:.2%}"
             ),
         )
