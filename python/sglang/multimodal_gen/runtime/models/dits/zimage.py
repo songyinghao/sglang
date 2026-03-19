@@ -1,5 +1,4 @@
 import math
-import os
 from typing import Any, List, Optional, Tuple
 
 import torch
@@ -50,7 +49,6 @@ except Exception:
 
 logger = init_logger(__name__)
 _is_cuda = current_platform.is_cuda()
-_ZIMAGE_DEBUG_RECORDS: list[dict[str, Any]] = []
 
 ADALN_EMBED_DIM = 256
 SEQ_MULTI_OF = 32
@@ -62,76 +60,6 @@ class SelectFirstElement(nn.Module):
 
     def forward(self, x):
         return x[0]
-
-
-def _gather_zimage_hidden_for_debug(
-    hidden_states: torch.Tensor,
-    num_replicated_suffix: int = 0,
-) -> torch.Tensor:
-    if get_sp_world_size() <= 1:
-        return hidden_states
-    if num_replicated_suffix > 0:
-        hidden_local = hidden_states[:, :-num_replicated_suffix, :].contiguous()
-        hidden_rep = hidden_states[:, -num_replicated_suffix:, :]
-        hidden_full = sequence_model_parallel_all_gather(hidden_local, dim=1)
-        return torch.cat([hidden_full, hidden_rep], dim=1)
-    return sequence_model_parallel_all_gather(hidden_states.contiguous(), dim=1)
-
-
-def _record_zimage_debug_tensor(
-    name: str,
-    hidden_states: torch.Tensor,
-    num_replicated_suffix: int = 0,
-    already_replicated: bool = False,
-) -> None:
-    trace_path = os.getenv("SGLANG_DEBUG_ZIMAGE_TRACE_PATH")
-    full_layer_name = os.getenv("SGLANG_DEBUG_ZIMAGE_FULL_LAYER")
-    if not trace_path and not full_layer_name:
-        return
-    if already_replicated:
-        hidden_full = hidden_states
-    else:
-        hidden_full = _gather_zimage_hidden_for_debug(
-            hidden_states,
-            num_replicated_suffix=num_replicated_suffix,
-        )
-    if get_sp_parallel_rank() != 0:
-        return
-    if full_layer_name == name:
-        full_layer_path = os.getenv("SGLANG_DEBUG_ZIMAGE_FULL_LAYER_PATH")
-        if not full_layer_path:
-            suffix = name.replace(".", "_")
-            base = trace_path or "/tmp/zimage_trace"
-            full_layer_path = f"{base}.{suffix}.pt"
-        torch.save(hidden_full.detach().cpu(), full_layer_path)
-    if not trace_path:
-        return
-    flat = hidden_full.detach().float().cpu().flatten()
-    _ZIMAGE_DEBUG_RECORDS.append(
-        {
-            "name": name,
-            "shape": tuple(hidden_full.shape),
-            "mean": flat.mean().item(),
-            "std": flat.std(unbiased=False).item(),
-            "absmax": flat.abs().max().item(),
-            "sum": flat.sum().item(),
-            "l2": flat.square().sum().item(),
-            "sample": flat[:128].clone(),
-        }
-    )
-
-
-def _dump_debug_tensor(path: str | None, tensor: torch.Tensor) -> None:
-    if not path:
-        return
-    torch.save(tensor.detach().float().cpu(), path)
-
-
-def _debug_context_layer_matches(layer_id: int) -> bool:
-    target = os.getenv("SGLANG_DEBUG_ZIMAGE_CONTEXT_LAYER_ID")
-    if target is None:
-        return layer_id == 0
-    return layer_id == int(target)
 
 
 class TimestepEmbedder(nn.Module):

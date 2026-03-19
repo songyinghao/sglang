@@ -730,10 +730,7 @@ class DenoisingStage(PipelineStage):
         if (
             get_sp_world_size() > 1
             and getattr(batch, "did_sp_shard_latents", False)
-            and (
-                server_args.comfyui_mode
-                or os.getenv("SGLANG_DEBUG_KEEP_NOISE_PRED") == "1"
-            )
+            and server_args.comfyui_mode
             and hasattr(batch, "noise_pred")
             and batch.noise_pred is not None
         ):
