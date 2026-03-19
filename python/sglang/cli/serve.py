@@ -66,15 +66,9 @@ def serve(args, extra_argv):
 
         print("\n--- Help for Diffusion Model Server ---")
         try:
-            # Suppress noisy logs (e.g. ROCm/CUDA detection) during import
-            _prev_level = logging.root.level
-            logging.root.setLevel(logging.WARNING)
-            try:
-                from sglang.multimodal_gen.runtime.entrypoints.cli.serve import (
-                    add_multimodal_gen_serve_args,
-                )
-            finally:
-                logging.root.setLevel(_prev_level)
+            from sglang.multimodal_gen.runtime.entrypoints.cli.serve import (
+                add_multimodal_gen_serve_args,
+            )
 
             parser = argparse.ArgumentParser(
                 prog="sglang serve",
