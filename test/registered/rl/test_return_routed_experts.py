@@ -1,6 +1,5 @@
 import asyncio
 import logging
-import os
 import unittest
 from typing import List
 

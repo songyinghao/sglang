@@ -6,7 +6,6 @@ python3 -m unittest test_pp_single_node.TestFixedBugs.test_chunked_prefill_with_
 python3 -m unittest test_pp_single_node.TestQwenVLPPAccuracy.test_mmmu
 """
 
-import os
 import time
 import unittest
 from types import SimpleNamespace
