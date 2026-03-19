@@ -369,9 +369,8 @@ class Scheduler(
         # Init moe config and GEMM config (FP8 GEMM, etc.)
         self.init_moe_gemm_config()
 
-        # Init mamba backend (only for models with Mamba/SSM layers)
-        if self._model_uses_mamba():
-            self.init_mamba_backend()
+        # Init mamba backend
+        self.init_mamba_backend()
 
         # Launch a model worker and draft model worker if using speculative decoding
         self.init_model_worker()
@@ -526,15 +525,6 @@ class Scheduler(
             self.tokenizer.think_end_id = self.tokenizer.encode(
                 reasoning_parser.detector.think_end_token, add_special_tokens=False
             )[0]
-
-    def _model_uses_mamba(self) -> bool:
-        """Check if the model has Mamba/SSM layers."""
-        config = getattr(
-            self.model_config.hf_config, "text_config", self.model_config.hf_config
-        )
-        if hasattr(config, "mamba_d_state") or hasattr(config, "ssm_cfg"):
-            return True
-        return "mamba" in getattr(config, "layer_types", [])
 
     def init_mamba_backend(self) -> None:
         initialize_mamba_selective_state_update_backend(self.server_args)
