@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING, Callable, List, Optional, Tuple
 
 import torch
 
+from sglang.api_logging import sglang_debug_api
 from sglang.srt.environ import envs
 from sglang.srt.layers import deep_gemm_wrapper
 from sglang.srt.layers.quantization.fp8_kernel import sglang_per_token_group_quant_fp8
@@ -90,7 +91,16 @@ if _use_aiter:
 
 
 if _is_cuda:
-    from sgl_kernel import fp8_blockwise_scaled_mm, fp8_scaled_mm
+    from sgl_kernel import fp8_blockwise_scaled_mm as _fp8_blockwise_scaled_mm
+    from sgl_kernel import fp8_scaled_mm as _fp8_scaled_mm
+
+    @sglang_debug_api(op_name="sgl_kernel.fp8_scaled_mm")
+    def fp8_scaled_mm(*args, **kwargs):
+        return _fp8_scaled_mm(*args, **kwargs)
+
+    @sglang_debug_api(op_name="sgl_kernel.fp8_blockwise_scaled_mm")
+    def fp8_blockwise_scaled_mm(*args, **kwargs):
+        return _fp8_blockwise_scaled_mm(*args, **kwargs)
 
     @torch.library.register_fake("sgl_kernel::fp8_scaled_mm")
     def _fp8_scaled_mm_abstract(mat_a, mat_b, scales_a, scales_b, out_dtype, bias=None):

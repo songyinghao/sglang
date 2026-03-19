@@ -5,6 +5,7 @@ import torch
 import torch.distributed as dist
 from torch import nn
 
+from sglang.api_logging import sglang_debug_api
 from sglang.srt.distributed import get_tp_group
 from sglang.srt.layers.dp_attention import (
     get_attention_tp_group,
@@ -23,10 +24,18 @@ if is_cuda():
         min_p_sampling_from_probs,
         top_k_top_p_sampling_from_probs,
     )
-    from sgl_kernel import (
-        top_k_renorm_prob,
-        top_p_renorm_prob,
-    )
+    from sgl_kernel import top_k_renorm_prob as _top_k_renorm_prob
+    from sgl_kernel import top_p_renorm_prob as _top_p_renorm_prob
+
+    @sglang_debug_api(op_name="sgl_kernel.top_k_renorm_prob")
+    def top_k_renorm_prob(*args, **kwargs):
+        return _top_k_renorm_prob(*args, **kwargs)
+
+    @sglang_debug_api(op_name="sgl_kernel.top_p_renorm_prob")
+    def top_p_renorm_prob(*args, **kwargs):
+        return _top_p_renorm_prob(*args, **kwargs)
+
+
 if is_npu():
     import torch_npu
 

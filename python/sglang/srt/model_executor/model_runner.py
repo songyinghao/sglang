@@ -32,7 +32,8 @@ import torch
 import torch.distributed as dist
 from torch import nn
 
-from sglang.jit_kernel.ngram_embedding import update_token_table
+from sglang.api_logging import sglang_debug_api
+from sglang.jit_kernel.ngram_embedding import update_token_table as _update_token_table
 from sglang.srt.configs import (
     BailingHybridConfig,
     FalconH1Config,
@@ -118,6 +119,13 @@ from sglang.srt.layers.torchao_utils import apply_torchao_config_to_model
 from sglang.srt.lora.lora_manager import LoRAManager
 from sglang.srt.lora.lora_registry import LoRARef
 from sglang.srt.managers.schedule_batch import sanity_check_mm_pad_shift_value
+
+
+@sglang_debug_api(op_name="jit_kernel.ngram_embedding.update_token_table")
+def update_token_table(*args, **kwargs):
+    return _update_token_table(*args, **kwargs)
+
+
 from sglang.srt.mem_cache.allocator import BaseTokenToKVPoolAllocator
 from sglang.srt.mem_cache.memory_pool import ReqToTokenPool
 from sglang.srt.model_executor.cpu_graph_runner import CPUGraphRunner

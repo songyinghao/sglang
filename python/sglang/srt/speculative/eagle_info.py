@@ -6,6 +6,7 @@ from typing import List, Optional, Tuple
 import torch
 import torch.nn.functional as F
 
+from sglang.api_logging import sglang_debug_api
 from sglang.srt.constrained.base_grammar_backend import BaseGrammarObject
 from sglang.srt.environ import envs
 from sglang.srt.layers.attention.utils import create_flashinfer_kv_indices_triton
@@ -42,11 +43,24 @@ from sglang.srt.speculative.spec_utils import (
 from sglang.srt.utils import is_cuda, next_power_of_2
 
 if is_cuda():
+    from sgl_kernel import top_k_renorm_prob as _top_k_renorm_prob
+    from sgl_kernel import top_p_renorm_prob as _top_p_renorm_prob
     from sgl_kernel import (
-        top_k_renorm_prob,
-        top_p_renorm_prob,
-        tree_speculative_sampling_target_only,
+        tree_speculative_sampling_target_only as _tree_speculative_sampling_target_only,
     )
+
+    @sglang_debug_api(op_name="sgl_kernel.top_k_renorm_prob")
+    def top_k_renorm_prob(*args, **kwargs):
+        return _top_k_renorm_prob(*args, **kwargs)
+
+    @sglang_debug_api(op_name="sgl_kernel.top_p_renorm_prob")
+    def top_p_renorm_prob(*args, **kwargs):
+        return _top_p_renorm_prob(*args, **kwargs)
+
+    @sglang_debug_api(op_name="sgl_kernel.tree_speculative_sampling_target_only")
+    def tree_speculative_sampling_target_only(*args, **kwargs):
+        return _tree_speculative_sampling_target_only(*args, **kwargs)
+
 
 logger = logging.getLogger(__name__)
 

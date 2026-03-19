@@ -28,6 +28,7 @@ from xgrammar import (
     allocate_token_bitmask,
 )
 
+from sglang.api_logging import sglang_debug_api
 from sglang.srt.constrained.base_grammar_backend import (
     BaseGrammarBackend,
     BaseGrammarObject,
@@ -39,7 +40,14 @@ from sglang.srt.utils import is_hip
 
 _is_hip = is_hip()
 if _is_hip:
-    from sgl_kernel import apply_token_bitmask_inplace_cuda
+    from sgl_kernel import (
+        apply_token_bitmask_inplace_cuda as _apply_token_bitmask_inplace_cuda,
+    )
+
+    @sglang_debug_api(op_name="sgl_kernel.apply_token_bitmask_inplace_cuda")
+    def apply_token_bitmask_inplace_cuda(*args, **kwargs):
+        return _apply_token_bitmask_inplace_cuda(*args, **kwargs)
+
 else:
     from sglang.srt.constrained.triton_ops.bitmask_ops import (
         apply_token_bitmask_inplace_triton,

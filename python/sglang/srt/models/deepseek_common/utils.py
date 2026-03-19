@@ -72,19 +72,23 @@ def awq_dequantize_func():
     if _is_cuda:
         from sgl_kernel import awq_dequantize
 
-        return awq_dequantize
+        from sglang.api_logging import sglang_debug_api
+
+        return sglang_debug_api(awq_dequantize, op_name="DeepseekCommon.awq_dequantize")
     elif _is_hip:
+        from sglang.api_logging import sglang_debug_api
         from sglang.srt.layers.quantization.awq_triton import (
             awq_dequantize_triton as awq_dequantize,
         )
 
-        return awq_dequantize
+        return sglang_debug_api(awq_dequantize, op_name="DeepseekCommon.awq_dequantize")
     elif _is_npu:
+        from sglang.api_logging import sglang_debug_api
         from sglang.srt.layers.quantization.awq_triton import (
             awq_dequantize_decomposition as awq_dequantize,
         )
 
-        return awq_dequantize
+        return sglang_debug_api(awq_dequantize, op_name="DeepseekCommon.awq_dequantize")
     else:
         return None
 

@@ -7,6 +7,7 @@ import torch
 from compressed_tensors.quantization import QuantizationStrategy
 from torch.nn import Parameter
 
+from sglang.api_logging import sglang_debug_api
 from sglang.srt.hardware_backend.npu.quantization.linear_method_npu import (
     NPUW8A8Int8DynamicLinearMethod,
 )
@@ -26,7 +27,11 @@ __all__ = ["CompressedTensorsW8A8Int8", "NPUCompressedTensorsW8A8Int8"]
 
 _is_cuda = is_cuda()
 if _is_cuda:
-    from sgl_kernel import int8_scaled_mm
+    from sgl_kernel import int8_scaled_mm as _int8_scaled_mm
+
+    @sglang_debug_api(op_name="sgl_kernel.int8_scaled_mm")
+    def int8_scaled_mm(*args, **kwargs):
+        return _int8_scaled_mm(*args, **kwargs)
 
 
 class CompressedTensorsW8A8Int8(CompressedTensorsLinearScheme):

@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Union
 
 import torch
 
+from sglang.api_logging import sglang_debug_api
 from sglang.srt.hardware_backend.npu.quantization.fused_moe_method_npu import (
     npu_fused_experts,
 )
@@ -64,9 +65,25 @@ if TYPE_CHECKING:
 _is_cuda = is_cuda()
 
 if _is_cuda:
-    from sgl_kernel import gptq_gemm, gptq_shuffle
+    from sgl_kernel import gptq_gemm as _gptq_gemm
+    from sgl_kernel import gptq_shuffle as _gptq_shuffle
 
-    from sglang.jit_kernel.gptq_marlin_repack import gptq_marlin_repack
+    from sglang.jit_kernel.gptq_marlin_repack import (
+        gptq_marlin_repack as _gptq_marlin_repack,
+    )
+
+    @sglang_debug_api(op_name="sgl_kernel.gptq_gemm")
+    def gptq_gemm(*args, **kwargs):
+        return _gptq_gemm(*args, **kwargs)
+
+    @sglang_debug_api(op_name="sgl_kernel.gptq_shuffle")
+    def gptq_shuffle(*args, **kwargs):
+        return _gptq_shuffle(*args, **kwargs)
+
+    @sglang_debug_api(op_name="jit_kernel.gptq_marlin_repack")
+    def gptq_marlin_repack(*args, **kwargs):
+        return _gptq_marlin_repack(*args, **kwargs)
+
 
 _is_npu = is_npu()
 

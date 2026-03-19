@@ -52,6 +52,8 @@ import torch.nn.functional as F
 from transformers.activations import ACT2FN
 from transformers.modeling_utils import PreTrainedModel
 
+from sglang.api_logging import sglang_debug_api
+
 try:
     from flash_attn.flash_attn_interface import flash_attn_varlen_func
 except ImportError:
@@ -65,6 +67,7 @@ from sglang.srt.layers.quantization.modelslim.modelslim import ModelSlimConfig
 from sglang.srt.utils import add_prefix
 
 
+@sglang_debug_api(op_name="KimiVLMoonViT.multihead_attention")
 def multihead_attention(
     q: torch.Tensor,
     k: torch.Tensor,

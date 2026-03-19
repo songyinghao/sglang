@@ -36,7 +36,11 @@ import torch
 import triton
 import triton.language as tl
 
-from sglang.jit_kernel.kvcache import can_use_store_cache, store_cache
+from sglang.api_logging import sglang_debug_api
+from sglang.jit_kernel.kvcache import (
+    can_use_store_cache,
+)
+from sglang.jit_kernel.kvcache import store_cache as _store_cache
 from sglang.srt.configs.mamba_utils import BaseLinearStateParams
 from sglang.srt.constants import GPU_MEMORY_TYPE_KV_CACHE
 from sglang.srt.environ import envs
@@ -62,6 +66,29 @@ from sglang.srt.utils import (
 )
 from sglang.srt.utils.custom_op import register_custom_op
 from sglang.srt.utils.torch_memory_saver_adapter import TorchMemorySaverAdapter
+
+
+@sglang_debug_api(op_name="jit_kernel.kvcache.store_cache")
+def store_cache(
+    k: torch.Tensor,
+    v: torch.Tensor,
+    k_cache: torch.Tensor,
+    v_cache: torch.Tensor,
+    indices: torch.Tensor,
+    *,
+    row_bytes: int = 0,
+    num_split: int = 0,
+) -> None:
+    return _store_cache(
+        k,
+        v,
+        k_cache,
+        v_cache,
+        indices,
+        row_bytes=row_bytes,
+        num_split=num_split,
+    )
+
 
 store_cache = register_custom_op(store_cache, mutates_args=["k_cache", "v_cache"])
 

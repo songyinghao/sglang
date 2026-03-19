@@ -8,19 +8,37 @@ import torch
 import triton
 import triton.language as tl
 
+from sglang.api_logging import sglang_debug_api
 from sglang.srt.utils import get_device_name, is_cuda
 
 _is_cuda = is_cuda()
 if _is_cuda:
     # Temporary
     try:
-        from sgl_kernel import sgl_per_token_group_quant_8bit
+        from sgl_kernel import (
+            sgl_per_token_group_quant_8bit as _sgl_per_token_group_quant_8bit,
+        )
 
         enable_sgl_per_token_group_quant_8bit = True
     except ImportError:
-        from sgl_kernel import sgl_per_token_group_quant_int8
+        from sgl_kernel import (
+            sgl_per_token_group_quant_int8 as _sgl_per_token_group_quant_int8,
+        )
 
         enable_sgl_per_token_group_quant_8bit = False
+
+    if enable_sgl_per_token_group_quant_8bit:
+
+        @sglang_debug_api(op_name="sgl_kernel.sgl_per_token_group_quant_8bit")
+        def sgl_per_token_group_quant_8bit(*args, **kwargs):
+            return _sgl_per_token_group_quant_8bit(*args, **kwargs)
+
+    else:
+
+        @sglang_debug_api(op_name="sgl_kernel.sgl_per_token_group_quant_int8")
+        def sgl_per_token_group_quant_int8(*args, **kwargs):
+            return _sgl_per_token_group_quant_int8(*args, **kwargs)
+
 
 logger = logging.getLogger(__name__)
 

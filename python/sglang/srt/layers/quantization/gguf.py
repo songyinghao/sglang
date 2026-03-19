@@ -11,6 +11,7 @@ import torch
 from gguf import GGMLQuantizationType as WeightType
 from torch.nn.parameter import Parameter, UninitializedParameter
 
+from sglang.api_logging import sglang_debug_api
 from sglang.srt.layers.linear import LinearBase
 from sglang.srt.layers.moe import MoeRunnerConfig
 from sglang.srt.layers.quantization.base_config import (
@@ -34,7 +35,10 @@ _is_xpu = is_xpu()
 _is_musa = is_musa()
 
 if _is_cuda or _is_musa:
-    from sgl_kernel import gelu_and_mul, moe_align_block_size, moe_sum, silu_and_mul
+    from sgl_kernel import gelu_and_mul as _gelu_and_mul
+    from sgl_kernel import moe_align_block_size as _moe_align_block_size
+    from sgl_kernel import moe_sum as _moe_sum
+    from sgl_kernel import silu_and_mul as _silu_and_mul
     from sgl_kernel.quantization import (
         ggml_dequantize,
         ggml_moe_a8,
@@ -43,6 +47,23 @@ if _is_cuda or _is_musa:
         ggml_mul_mat_a8,
         ggml_mul_mat_vec_a8,
     )
+
+    @sglang_debug_api(op_name="sgl_kernel.gelu_and_mul")
+    def gelu_and_mul(*args, **kwargs):
+        return _gelu_and_mul(*args, **kwargs)
+
+    @sglang_debug_api(op_name="sgl_kernel.moe_align_block_size")
+    def moe_align_block_size(*args, **kwargs):
+        return _moe_align_block_size(*args, **kwargs)
+
+    @sglang_debug_api(op_name="sgl_kernel.moe_sum")
+    def moe_sum(*args, **kwargs):
+        return _moe_sum(*args, **kwargs)
+
+    @sglang_debug_api(op_name="sgl_kernel.silu_and_mul")
+    def silu_and_mul(*args, **kwargs):
+        return _silu_and_mul(*args, **kwargs)
+
 else:
     if not _is_hip:
         warnings.warn(f"Only CUDA and MUSA support GGUF quantization currently.")

@@ -12,6 +12,7 @@ import torch.nn.functional as F
 from torch import nn
 from transformers import PretrainedConfig
 
+from sglang.api_logging import sglang_debug_api
 from sglang.srt.distributed import (
     get_pp_group,
     get_tensor_model_parallel_world_size,
@@ -75,9 +76,23 @@ _is_cublas_ge_129 = is_nvidia_cublas_version_ge_12_9()
 
 if _is_cuda:
     try:
-        from sgl_kernel import bmm_fp8, concat_mla_k, merge_state_v2
+        from sgl_kernel import bmm_fp8 as _bmm_fp8
+        from sgl_kernel import concat_mla_k as _concat_mla_k
+        from sgl_kernel import merge_state_v2 as _merge_state_v2
 
         from sglang.srt.layers.quantization.fp8_kernel import per_tensor_quant_mla_fp8
+
+        @sglang_debug_api(op_name="SarvamMoe.bmm_fp8")
+        def bmm_fp8(*args, **kwargs):
+            return _bmm_fp8(*args, **kwargs)
+
+        @sglang_debug_api(op_name="SarvamMoe.concat_mla_k")
+        def concat_mla_k(*args, **kwargs):
+            return _concat_mla_k(*args, **kwargs)
+
+        @sglang_debug_api(op_name="SarvamMoe.merge_state_v2")
+        def merge_state_v2(*args, **kwargs):
+            return _merge_state_v2(*args, **kwargs)
 
         _has_fp8_support = True
         _has_concat_mla_k = True

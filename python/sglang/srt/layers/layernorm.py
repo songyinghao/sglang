@@ -20,6 +20,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+from sglang.api_logging import sglang_debug_api
 from sglang.srt.batch_invariant_ops import (
     is_batch_invariant_mode_enabled,
     rms_norm_batch_invariant,
@@ -59,12 +60,28 @@ if _is_cuda or _is_xpu:
     else:
         _flashinfer_layernorm_available = False
 
-    from sgl_kernel import (
-        fused_add_rmsnorm,
-        gemma_fused_add_rmsnorm,
-        gemma_rmsnorm,
-        rmsnorm,
-    )
+    from sgl_kernel import fused_add_rmsnorm as _fused_add_rmsnorm
+    from sgl_kernel import gemma_fused_add_rmsnorm as _gemma_fused_add_rmsnorm
+    from sgl_kernel import gemma_rmsnorm as _gemma_rmsnorm
+    from sgl_kernel import rmsnorm as _rmsnorm
+
+    @sglang_debug_api(op_name="sgl_kernel.fused_add_rmsnorm")
+    def fused_add_rmsnorm(*args, **kwargs):
+        return _fused_add_rmsnorm(*args, **kwargs)
+
+    @sglang_debug_api(op_name="sgl_kernel.gemma_fused_add_rmsnorm")
+    def gemma_fused_add_rmsnorm(*args, **kwargs):
+        return _gemma_fused_add_rmsnorm(*args, **kwargs)
+
+    @sglang_debug_api(op_name="sgl_kernel.gemma_rmsnorm")
+    def gemma_rmsnorm(*args, **kwargs):
+        return _gemma_rmsnorm(*args, **kwargs)
+
+    @sglang_debug_api(op_name="sgl_kernel.rmsnorm")
+    def rmsnorm(*args, **kwargs):
+        return _rmsnorm(*args, **kwargs)
+
+
 _has_vllm_rms_norm = False
 if _use_aiter:
     from aiter import rmsnorm2d_fwd as rms_norm

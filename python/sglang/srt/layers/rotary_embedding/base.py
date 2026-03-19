@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING, Dict, List, Optional, Tuple, Union
 
 import torch
 
+from sglang.api_logging import sglang_debug_api
 from sglang.srt.layers.rotary_embedding.utils import apply_rotary_emb
 from sglang.srt.layers.utils import MultiPlatformOp
 from sglang.srt.server_args import get_global_server_args
@@ -35,7 +36,14 @@ _is_musa = is_musa()
 _is_mps = is_mps()
 
 if _is_cuda:
-    from sglang.jit_kernel.rope import apply_rope_with_cos_sin_cache_inplace
+    from sglang.jit_kernel.rope import (
+        apply_rope_with_cos_sin_cache_inplace as _apply_rope_with_cos_sin_cache_inplace,
+    )
+
+    @sglang_debug_api(op_name="jit_kernel.rope.apply_rope_with_cos_sin_cache_inplace")
+    def apply_rope_with_cos_sin_cache_inplace(*args, **kwargs):
+        return _apply_rope_with_cos_sin_cache_inplace(*args, **kwargs)
+
 
 if _is_npu:
     import torch_npu

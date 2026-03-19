@@ -7,6 +7,7 @@ from typing import Optional, Tuple
 import torch
 import triton
 
+from sglang.api_logging import sglang_debug_api
 from sglang.srt.constrained.base_grammar_backend import BaseGrammarObject
 from sglang.srt.server_args import get_global_server_args
 
@@ -37,14 +38,35 @@ from sglang.srt.speculative.spec_utils import (
 from sglang.srt.utils import is_cuda, is_hip, next_power_of_2
 
 if is_cuda():
+    from sgl_kernel import top_k_renorm_prob as _top_k_renorm_prob
+    from sgl_kernel import top_p_renorm_prob as _top_p_renorm_prob
     from sgl_kernel import (
-        top_k_renorm_prob,
-        top_p_renorm_prob,
-        tree_speculative_sampling_target_only,
-        verify_tree_greedy,
+        tree_speculative_sampling_target_only as _tree_speculative_sampling_target_only,
     )
+    from sgl_kernel import verify_tree_greedy as _verify_tree_greedy
+
+    @sglang_debug_api(op_name="sgl_kernel.top_k_renorm_prob")
+    def top_k_renorm_prob(*args, **kwargs):
+        return _top_k_renorm_prob(*args, **kwargs)
+
+    @sglang_debug_api(op_name="sgl_kernel.top_p_renorm_prob")
+    def top_p_renorm_prob(*args, **kwargs):
+        return _top_p_renorm_prob(*args, **kwargs)
+
+    @sglang_debug_api(op_name="sgl_kernel.tree_speculative_sampling_target_only")
+    def tree_speculative_sampling_target_only(*args, **kwargs):
+        return _tree_speculative_sampling_target_only(*args, **kwargs)
+
+    @sglang_debug_api(op_name="sgl_kernel.verify_tree_greedy")
+    def verify_tree_greedy(*args, **kwargs):
+        return _verify_tree_greedy(*args, **kwargs)
+
 elif is_hip():
-    from sgl_kernel import verify_tree_greedy
+    from sgl_kernel import verify_tree_greedy as _verify_tree_greedy
+
+    @sglang_debug_api(op_name="sgl_kernel.verify_tree_greedy")
+    def verify_tree_greedy(*args, **kwargs):
+        return _verify_tree_greedy(*args, **kwargs)
 
 
 @dataclass

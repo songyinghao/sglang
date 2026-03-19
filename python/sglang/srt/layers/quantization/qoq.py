@@ -5,6 +5,7 @@ from typing import Any, Dict, List, Optional
 import torch
 from torch.nn.parameter import Parameter
 
+from sglang.api_logging import sglang_debug_api
 from sglang.srt.layers.parameter import (
     ChannelQuantScaleParameter,
     GroupQuantScaleParameter,
@@ -20,7 +21,16 @@ from sglang.srt.utils import is_cuda
 
 _is_cuda = is_cuda()
 if _is_cuda:
-    from sgl_kernel import qserve_w4a8_per_chn_gemm, qserve_w4a8_per_group_gemm
+    from sgl_kernel import qserve_w4a8_per_chn_gemm as _qserve_w4a8_per_chn_gemm
+    from sgl_kernel import qserve_w4a8_per_group_gemm as _qserve_w4a8_per_group_gemm
+
+    @sglang_debug_api(op_name="sgl_kernel.qserve_w4a8_per_chn_gemm")
+    def qserve_w4a8_per_chn_gemm(*args, **kwargs):
+        return _qserve_w4a8_per_chn_gemm(*args, **kwargs)
+
+    @sglang_debug_api(op_name="sgl_kernel.qserve_w4a8_per_group_gemm")
+    def qserve_w4a8_per_group_gemm(*args, **kwargs):
+        return _qserve_w4a8_per_group_gemm(*args, **kwargs)
 
 
 QoQ_SUPPORTED_WEIGHT_BITS = [4]

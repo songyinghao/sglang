@@ -9,6 +9,7 @@ import torch.nn.functional as F
 from torch import nn
 from transformers import PretrainedConfig
 
+from sglang.api_logging import sglang_debug_api
 from sglang.srt.distributed import (
     get_pp_group,
     get_tensor_model_parallel_rank,
@@ -95,13 +96,23 @@ if _use_aiter_gfx95:
     pass
 
 if _is_cuda:
-    from sgl_kernel import awq_dequantize
+    from sgl_kernel import awq_dequantize as _awq_dequantize
+
+    @sglang_debug_api(op_name="BailingMoeLinear.awq_dequantize")
+    def awq_dequantize(*args, **kwargs):
+        return _awq_dequantize(*args, **kwargs)
+
 elif _is_cpu and _is_cpu_amx_available:
     pass
 elif _is_hip:
     from sglang.srt.layers.quantization.awq_triton import (
-        awq_dequantize_triton as awq_dequantize,
+        awq_dequantize_triton as _awq_dequantize,
     )
+
+    @sglang_debug_api(op_name="BailingMoeLinear.awq_dequantize")
+    def awq_dequantize(*args, **kwargs):
+        return _awq_dequantize(*args, **kwargs)
+
 else:
     from vllm._custom_ops import awq_dequantize
 

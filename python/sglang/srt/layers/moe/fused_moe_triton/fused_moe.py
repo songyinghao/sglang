@@ -13,6 +13,7 @@ import torch
 import torch.nn.functional as F
 import triton.language as tl
 
+from sglang.api_logging import sglang_debug_api
 from sglang.srt.layers.moe.moe_runner import MoeRunnerConfig
 from sglang.srt.utils import (
     cpu_has_amx_support,
@@ -48,11 +49,35 @@ _use_sgl_xpu = use_intel_xpu_backend()
 from sglang.srt.server_args import get_global_server_args
 
 if _is_cuda:
-    from sgl_kernel import gelu_and_mul, moe_sum_reduce, silu_and_mul
+    from sgl_kernel import gelu_and_mul as _gelu_and_mul
+    from sgl_kernel import moe_sum_reduce as _moe_sum_reduce
+    from sgl_kernel import silu_and_mul as _silu_and_mul
+
+    @sglang_debug_api(op_name="sgl_kernel.gelu_and_mul")
+    def gelu_and_mul(*args, **kwargs):
+        return _gelu_and_mul(*args, **kwargs)
+
+    @sglang_debug_api(op_name="sgl_kernel.moe_sum_reduce")
+    def moe_sum_reduce(*args, **kwargs):
+        return _moe_sum_reduce(*args, **kwargs)
+
+    @sglang_debug_api(op_name="sgl_kernel.silu_and_mul")
+    def silu_and_mul(*args, **kwargs):
+        return _silu_and_mul(*args, **kwargs)
+
 elif _is_cpu and _is_cpu_amx_available:
     pass
 elif _is_hip:
-    from sgl_kernel import gelu_and_mul, silu_and_mul
+    from sgl_kernel import gelu_and_mul as _gelu_and_mul
+    from sgl_kernel import silu_and_mul as _silu_and_mul
+
+    @sglang_debug_api(op_name="sgl_kernel.gelu_and_mul")
+    def gelu_and_mul(*args, **kwargs):
+        return _gelu_and_mul(*args, **kwargs)
+
+    @sglang_debug_api(op_name="sgl_kernel.silu_and_mul")
+    def silu_and_mul(*args, **kwargs):
+        return _silu_and_mul(*args, **kwargs)
 
     if _use_aiter:
         try:
@@ -62,7 +87,17 @@ elif _is_hip:
     # Note: vllm_ops is not needed for HIP when _use_aiter=False
     # because the code uses moe_sum_reduce_triton as fallback (line 619)
 elif _is_xpu:
-    from sgl_kernel import moe_sum_reduce, silu_and_mul
+    from sgl_kernel import moe_sum_reduce as _moe_sum_reduce
+    from sgl_kernel import silu_and_mul as _silu_and_mul
+
+    @sglang_debug_api(op_name="sgl_kernel.moe_sum_reduce")
+    def moe_sum_reduce(*args, **kwargs):
+        return _moe_sum_reduce(*args, **kwargs)
+
+    @sglang_debug_api(op_name="sgl_kernel.silu_and_mul")
+    def silu_and_mul(*args, **kwargs):
+        return _silu_and_mul(*args, **kwargs)
+
 
 # Try to import vllm_ops for non-CUDA/HIP/XPU platforms
 _has_vllm_ops = False

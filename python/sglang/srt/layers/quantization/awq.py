@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
 import torch
 
+from sglang.api_logging import sglang_debug_api
 from sglang.srt.hardware_backend.npu.quantization.fused_moe_method_npu import (
     npu_fused_experts,
 )
@@ -60,19 +61,29 @@ if _is_npu:
     import torch_npu
 
 if _is_cuda:
-    from sglang.jit_kernel.awq_dequantize import awq_dequantize
+    from sglang.jit_kernel.awq_dequantize import awq_dequantize as _awq_dequantize
     from sglang.jit_kernel.awq_marlin_repack import (
-        awq_marlin_moe_repack,
-        awq_marlin_repack,
+        awq_marlin_moe_repack as _awq_marlin_moe_repack,
+    )
+    from sglang.jit_kernel.awq_marlin_repack import (
+        awq_marlin_repack as _awq_marlin_repack,
     )
     from sglang.srt.utils.custom_op import register_custom_op_from_extern
 
     awq_dequantize = register_custom_op_from_extern(
-        awq_dequantize,
+        _awq_dequantize,
         fake_impl=lambda qweight, scales, qzeros: qweight.new_empty(
             qweight.shape[:-1] + (qweight.shape[-1] * 8,), dtype=scales.dtype
         ),
     )
+
+    @sglang_debug_api(op_name="jit_kernel.awq_marlin_repack")
+    def awq_marlin_repack(*args, **kwargs):
+        return _awq_marlin_repack(*args, **kwargs)
+
+    @sglang_debug_api(op_name="jit_kernel.awq_marlin_moe_repack")
+    def awq_marlin_moe_repack(*args, **kwargs):
+        return _awq_marlin_moe_repack(*args, **kwargs)
 
 elif _is_hip:
     from sglang.srt.layers.quantization.awq_triton import (
@@ -80,7 +91,11 @@ elif _is_hip:
     )
 
 elif _is_xpu:
-    from sgl_kernel import awq_dequantize
+    from sgl_kernel import awq_dequantize as _awq_dequantize
+
+    @sglang_debug_api(op_name="sgl_kernel.awq_dequantize")
+    def awq_dequantize(*args, **kwargs):
+        return _awq_dequantize(*args, **kwargs)
 
     warnings.warn(f"XPU does not support fused_marlin_moe currently.")
 else:

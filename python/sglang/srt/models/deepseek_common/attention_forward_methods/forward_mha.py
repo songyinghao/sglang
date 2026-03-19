@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING
 
 import torch
 
+from sglang.api_logging import sglang_debug_api
 from sglang.srt.environ import envs
 from sglang.srt.layers.attention.nsa.dequant_k_cache import dequantize_k_cache_paged
 from sglang.srt.layers.attention.tbo_backend import TboAttnBackend
@@ -27,7 +28,17 @@ if TYPE_CHECKING:
     from sglang.srt.models.deepseek_v2 import DeepseekV2AttentionMLA
 
 if _is_cuda:
-    from sgl_kernel import concat_mla_k, merge_state_v2
+    from sgl_kernel import concat_mla_k as _concat_mla_k
+    from sgl_kernel import merge_state_v2 as _merge_state_v2
+
+    @sglang_debug_api(op_name="DeepseekCommon.concat_mla_k")
+    def concat_mla_k(*args, **kwargs):
+        return _concat_mla_k(*args, **kwargs)
+
+    @sglang_debug_api(op_name="DeepseekCommon.merge_state_v2")
+    def merge_state_v2(*args, **kwargs):
+        return _merge_state_v2(*args, **kwargs)
+
 
 if _use_aiter_gfx95:
     from aiter.ops.triton.fused_fp8_quant import fused_rms_fp8_group_quant

@@ -10,24 +10,47 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+from sglang.api_logging import sglang_debug_api
 from sglang.multimodal_gen.runtime.platforms import current_platform
 
 _is_cuda = current_platform.is_cuda()
 _is_npu = current_platform.is_npu()
 _is_musa = current_platform.is_musa()
 if _is_cuda:
-    from sgl_kernel import fused_add_rmsnorm, rmsnorm
+    from sgl_kernel import fused_add_rmsnorm as _fused_add_rmsnorm
+    from sgl_kernel import rmsnorm as _rmsnorm
+
+    @sglang_debug_api(op_name="sgl_kernel.fused_add_rmsnorm")
+    def fused_add_rmsnorm(*args, **kwargs):
+        return _fused_add_rmsnorm(*args, **kwargs)
+
+    @sglang_debug_api(op_name="sgl_kernel.rmsnorm")
+    def rmsnorm(*args, **kwargs):
+        return _rmsnorm(*args, **kwargs)
+
 
 if _is_npu:
     import torch_npu
 
 if _is_musa:
-    from sgl_kernel import fused_add_rmsnorm
+    from sgl_kernel import fused_add_rmsnorm as _musa_fused_add_rmsnorm
+
+    @sglang_debug_api(op_name="sgl_kernel.fused_add_rmsnorm")
+    def fused_add_rmsnorm(*args, **kwargs):
+        return _musa_fused_add_rmsnorm(*args, **kwargs)
+
 
 from sglang.jit_kernel.diffusion.triton.norm import norm_infer, rms_norm_fn
-from sglang.jit_kernel.diffusion.triton.rmsnorm_onepass import triton_one_pass_rms_norm
-from sglang.jit_kernel.diffusion.triton.scale_shift import fuse_scale_shift_kernel
-from sglang.jit_kernel.norm import can_use_fused_inplace_qknorm, fused_inplace_qknorm
+from sglang.jit_kernel.diffusion.triton.rmsnorm_onepass import (
+    triton_one_pass_rms_norm as _triton_one_pass_rms_norm,
+)
+from sglang.jit_kernel.diffusion.triton.scale_shift import (
+    fuse_scale_shift_kernel as _fuse_scale_shift_kernel,
+)
+from sglang.jit_kernel.norm import (
+    can_use_fused_inplace_qknorm,
+)
+from sglang.jit_kernel.norm import fused_inplace_qknorm as _fused_inplace_qknorm
 from sglang.multimodal_gen.runtime.distributed.parallel_state import (
     get_tensor_model_parallel_rank,
     get_tensor_model_parallel_world_size,
@@ -35,6 +58,21 @@ from sglang.multimodal_gen.runtime.distributed.parallel_state import (
 )
 from sglang.multimodal_gen.runtime.layers.custom_op import CustomOp
 from sglang.multimodal_gen.runtime.utils.common import get_bool_env_var
+
+
+@sglang_debug_api(op_name="jit_kernel.diffusion.triton.rmsnorm_onepass")
+def triton_one_pass_rms_norm(*args, **kwargs):
+    return _triton_one_pass_rms_norm(*args, **kwargs)
+
+
+@sglang_debug_api(op_name="jit_kernel.diffusion.triton.fuse_scale_shift_kernel")
+def fuse_scale_shift_kernel(*args, **kwargs):
+    return _fuse_scale_shift_kernel(*args, **kwargs)
+
+
+@sglang_debug_api(op_name="jit_kernel.norm.fused_inplace_qknorm")
+def fused_inplace_qknorm(*args, **kwargs):
+    return _fused_inplace_qknorm(*args, **kwargs)
 
 
 # Copied and adapted from sglang

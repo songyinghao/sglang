@@ -27,6 +27,7 @@ import torch.nn.functional as F
 from torch import nn
 from transformers import PretrainedConfig
 
+from sglang.api_logging import sglang_debug_api
 from sglang.srt.batch_overlap.single_batch_overlap import SboFlags, compute_overlap_args
 from sglang.srt.batch_overlap.two_batch_overlap import (
     MaybeTboDeepEPDispatcher,
@@ -162,7 +163,17 @@ if _use_aiter:
     pass
 
 if _is_cuda:
-    from sgl_kernel import dsv3_fused_a_gemm, dsv3_router_gemm
+    from sgl_kernel import dsv3_fused_a_gemm as _dsv3_fused_a_gemm
+    from sgl_kernel import dsv3_router_gemm as _dsv3_router_gemm
+
+    @sglang_debug_api(op_name="DeepseekV2.dsv3_fused_a_gemm")
+    def dsv3_fused_a_gemm(*args, **kwargs):
+        return _dsv3_fused_a_gemm(*args, **kwargs)
+
+    @sglang_debug_api(op_name="DeepseekV2.dsv3_router_gemm")
+    def dsv3_router_gemm(*args, **kwargs):
+        return _dsv3_router_gemm(*args, **kwargs)
+
 elif _is_npu:
     from sglang.srt.hardware_backend.npu.modules.deepseek_v2_attention_mla_npu import (
         forward_dsa_core_npu,

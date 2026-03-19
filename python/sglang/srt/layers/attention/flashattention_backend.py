@@ -8,6 +8,7 @@ import torch
 import triton
 import triton.language as tl
 
+from sglang.api_logging import sglang_debug_api
 from sglang.srt.configs.model_config import AttentionArch
 from sglang.srt.layers.attention.base_attn_backend import AttentionBackend
 from sglang.srt.layers.radix_attention import AttentionType
@@ -21,19 +22,47 @@ if TYPE_CHECKING:
     from sglang.srt.layers.radix_attention import RadixAttention
     from sglang.srt.model_executor.model_runner import ModelRunner
 
-from sgl_kernel import merge_state_v2
-from sgl_kernel.flash_attn import flash_attn_varlen_func as flash_attn_varlen_func_fa3
-from sgl_kernel.flash_attn import flash_attn_with_kvcache as flash_attn_with_kvcache_fa3
+from sgl_kernel import merge_state_v2 as _merge_state_v2
+from sgl_kernel.flash_attn import flash_attn_varlen_func as _flash_attn_varlen_func_fa3
+from sgl_kernel.flash_attn import (
+    flash_attn_with_kvcache as _flash_attn_with_kvcache_fa3,
+)
+
+
+@sglang_debug_api(op_name="sgl_kernel.merge_state_v2")
+def merge_state_v2(*args, **kwargs):
+    return _merge_state_v2(*args, **kwargs)
+
+
+@sglang_debug_api(op_name="sgl_kernel.flash_attn.flash_attn_varlen_func")
+def flash_attn_varlen_func_fa3(*args, **kwargs):
+    return _flash_attn_varlen_func_fa3(*args, **kwargs)
+
+
+@sglang_debug_api(op_name="sgl_kernel.flash_attn.flash_attn_with_kvcache")
+def flash_attn_with_kvcache_fa3(*args, **kwargs):
+    return _flash_attn_with_kvcache_fa3(*args, **kwargs)
+
 
 flash_attn_varlen_func = flash_attn_varlen_func_fa3
 flash_attn_with_kvcache = flash_attn_with_kvcache_fa3
 
 from sglang.jit_kernel.flash_attention_v4 import (
-    flash_attn_varlen_func as flash_attn_varlen_func_fa4,
+    flash_attn_varlen_func as _flash_attn_varlen_func_fa4,
 )
 from sglang.jit_kernel.flash_attention_v4 import (
-    flash_attn_with_kvcache as flash_attn_with_kvcache_fa4,
+    flash_attn_with_kvcache as _flash_attn_with_kvcache_fa4,
 )
+
+
+@sglang_debug_api(op_name="jit_kernel.flash_attention_v4.flash_attn_varlen_func")
+def flash_attn_varlen_func_fa4(*args, **kwargs):
+    return _flash_attn_varlen_func_fa4(*args, **kwargs)
+
+
+@sglang_debug_api(op_name="jit_kernel.flash_attention_v4.flash_attn_with_kvcache")
+def flash_attn_with_kvcache_fa4(*args, **kwargs):
+    return _flash_attn_with_kvcache_fa4(*args, **kwargs)
 
 
 @dataclass

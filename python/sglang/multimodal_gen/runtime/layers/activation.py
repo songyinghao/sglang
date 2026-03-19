@@ -11,13 +11,19 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+from sglang.api_logging import sglang_debug_api
 from sglang.multimodal_gen.runtime.platforms import current_platform
 
 _is_cuda = current_platform.is_cuda()
 _is_hip = current_platform.is_hip()
 _is_npu = current_platform.is_npu()
 if _is_cuda or _is_hip:
-    from sgl_kernel import silu_and_mul
+    from sgl_kernel import silu_and_mul as _silu_and_mul
+
+    @sglang_debug_api(op_name="sgl_kernel.silu_and_mul")
+    def silu_and_mul(*args, **kwargs):
+        return _silu_and_mul(*args, **kwargs)
+
 
 if _is_npu:
     import torch_npu

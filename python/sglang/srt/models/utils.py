@@ -21,7 +21,11 @@ from typing import TYPE_CHECKING, Any, Optional, Tuple
 import numpy as np
 import torch
 
-from sglang.jit_kernel.norm import can_use_fused_inplace_qknorm, fused_inplace_qknorm
+from sglang.api_logging import sglang_debug_api
+from sglang.jit_kernel.norm import (
+    can_use_fused_inplace_qknorm,
+)
+from sglang.jit_kernel.norm import fused_inplace_qknorm as _fused_inplace_qknorm
 from sglang.srt.environ import envs
 from sglang.srt.layers.radix_attention import RadixAttention
 from sglang.srt.mem_cache.swa_memory_pool import SWAKVPool
@@ -34,6 +38,27 @@ if TYPE_CHECKING:
     from sglang.srt.layers.layernorm import RMSNorm
 
 _is_cuda = is_cuda()
+
+
+@sglang_debug_api(op_name="jit_kernel.norm.fused_inplace_qknorm")
+def fused_inplace_qknorm(
+    q: torch.Tensor,
+    k: torch.Tensor,
+    q_weight: torch.Tensor,
+    k_weight: torch.Tensor,
+    eps: float = 1e-6,
+    *,
+    head_dim: int = 0,
+) -> None:
+    return _fused_inplace_qknorm(
+        q,
+        k,
+        q_weight,
+        k_weight,
+        eps,
+        head_dim=head_dim,
+    )
+
 
 WeightsMapping = Mapping[str, Optional[str]]
 """If a key maps to a value of `None`, the corresponding weight is ignored."""

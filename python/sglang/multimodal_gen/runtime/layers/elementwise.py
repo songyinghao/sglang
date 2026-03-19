@@ -1,7 +1,15 @@
 import torch
 
-from sglang.jit_kernel.diffusion.triton.scale_shift import fuse_scale_shift_kernel
+from sglang.api_logging import sglang_debug_api
+from sglang.jit_kernel.diffusion.triton.scale_shift import (
+    fuse_scale_shift_kernel as _fuse_scale_shift_kernel,
+)
 from sglang.multimodal_gen.runtime.layers.custom_op import CustomOp
+
+
+@sglang_debug_api(op_name="jit_kernel.diffusion.triton.fuse_scale_shift_kernel")
+def fuse_scale_shift_kernel(*args, **kwargs):
+    return _fuse_scale_shift_kernel(*args, **kwargs)
 
 
 class MulAdd(CustomOp):

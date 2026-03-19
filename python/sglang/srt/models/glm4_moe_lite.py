@@ -22,6 +22,7 @@ import torch.nn.functional as F
 from torch import nn
 from transformers import PretrainedConfig
 
+from sglang.api_logging import sglang_debug_api
 from sglang.srt.batch_overlap.single_batch_overlap import SboFlags
 from sglang.srt.distributed import (
     get_moe_expert_parallel_world_size,
@@ -183,7 +184,11 @@ class Glm4MoeLiteGate(nn.Module):
             and self.weight.shape[0] == 256
             and _device_sm >= 90
         ):
-            from sgl_kernel import dsv3_router_gemm
+            from sgl_kernel import dsv3_router_gemm as _dsv3_router_gemm
+
+            @sglang_debug_api(op_name="Glm4MoeLite.dsv3_router_gemm")
+            def dsv3_router_gemm(*args, **kwargs):
+                return _dsv3_router_gemm(*args, **kwargs)
 
             logits = dsv3_router_gemm(hidden_states, self.weight).to(
                 hidden_states.dtype

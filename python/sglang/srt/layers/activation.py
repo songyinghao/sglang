@@ -22,6 +22,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from transformers import PretrainedConfig
 
+from sglang.api_logging import sglang_debug_api
 from sglang.srt.distributed import (
     divide,
     get_tensor_model_parallel_rank,
@@ -50,9 +51,44 @@ _is_hip = is_hip()
 _is_xpu = is_xpu()
 
 if _is_cuda or _is_xpu:
-    from sgl_kernel import gelu_and_mul, gelu_tanh_and_mul, silu_and_mul
+    from sgl_kernel import gelu_and_mul as _gelu_and_mul
+    from sgl_kernel import gelu_tanh_and_mul as _gelu_tanh_and_mul
+    from sgl_kernel import silu_and_mul as _silu_and_mul
+
+    @sglang_debug_api(op_name="sgl_kernel.gelu_and_mul")
+    def gelu_and_mul(*args, **kwargs):
+        return _gelu_and_mul(*args, **kwargs)
+
+    @sglang_debug_api(op_name="sgl_kernel.gelu_tanh_and_mul")
+    def gelu_tanh_and_mul(*args, **kwargs):
+        return _gelu_tanh_and_mul(*args, **kwargs)
+
+    @sglang_debug_api(op_name="sgl_kernel.silu_and_mul")
+    def silu_and_mul(*args, **kwargs):
+        return _silu_and_mul(*args, **kwargs)
+
 elif _is_hip:
-    from sgl_kernel import gelu_and_mul, gelu_quick, gelu_tanh_and_mul, silu_and_mul
+    from sgl_kernel import gelu_and_mul as _gelu_and_mul
+    from sgl_kernel import gelu_quick as _gelu_quick
+    from sgl_kernel import gelu_tanh_and_mul as _gelu_tanh_and_mul
+    from sgl_kernel import silu_and_mul as _silu_and_mul
+
+    @sglang_debug_api(op_name="sgl_kernel.gelu_and_mul")
+    def gelu_and_mul(*args, **kwargs):
+        return _gelu_and_mul(*args, **kwargs)
+
+    @sglang_debug_api(op_name="sgl_kernel.gelu_quick")
+    def gelu_quick(*args, **kwargs):
+        return _gelu_quick(*args, **kwargs)
+
+    @sglang_debug_api(op_name="sgl_kernel.gelu_tanh_and_mul")
+    def gelu_tanh_and_mul(*args, **kwargs):
+        return _gelu_tanh_and_mul(*args, **kwargs)
+
+    @sglang_debug_api(op_name="sgl_kernel.silu_and_mul")
+    def silu_and_mul(*args, **kwargs):
+        return _silu_and_mul(*args, **kwargs)
+
 
 if is_npu():
     import torch_npu

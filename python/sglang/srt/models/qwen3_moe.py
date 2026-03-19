@@ -25,6 +25,7 @@ import torch
 from torch import nn
 from transformers import PretrainedConfig
 
+from sglang.api_logging import sglang_debug_api
 from sglang.srt.distributed import (
     get_moe_expert_parallel_world_size,
     get_pp_group,
@@ -82,7 +83,12 @@ from sglang.srt.utils import (
 _is_cuda = is_cuda()
 
 if _is_cuda:
-    from sgl_kernel import fused_qk_norm_rope
+    from sgl_kernel import fused_qk_norm_rope as _fused_qk_norm_rope
+
+    @sglang_debug_api(op_name="Qwen3Moe.fused_qk_norm_rope")
+    def fused_qk_norm_rope(*args, **kwargs):
+        return _fused_qk_norm_rope(*args, **kwargs)
+
 
 TConfig = TypeVar("TConfig", bound=PretrainedConfig)
 

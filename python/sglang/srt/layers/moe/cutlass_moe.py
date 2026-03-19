@@ -4,26 +4,65 @@ from typing import Optional, Tuple
 
 import torch
 
+from sglang.api_logging import sglang_debug_api
 from sglang.srt.layers.moe.cutlass_moe_params import CutlassMoEParams
 from sglang.srt.utils import is_cuda, is_sm90_supported, is_sm100_supported
 
 _is_cuda = is_cuda()
 if _is_cuda:
+    from sgl_kernel import apply_shuffle_mul_sum as _apply_shuffle_mul_sum
     from sgl_kernel import (
-        apply_shuffle_mul_sum,
-        es_fp8_blockwise_scaled_grouped_mm,
-        es_sm100_mxfp8_blockscaled_grouped_mm,
-        es_sm100_mxfp8_blockscaled_grouped_quant,
-        fp8_blockwise_scaled_grouped_mm,
-        prepare_moe_input,
-        shuffle_rows,
-        silu_and_mul,
+        es_fp8_blockwise_scaled_grouped_mm as _es_fp8_blockwise_scaled_grouped_mm,
     )
+    from sgl_kernel import (
+        es_sm100_mxfp8_blockscaled_grouped_mm as _es_sm100_mxfp8_blockscaled_grouped_mm,
+    )
+    from sgl_kernel import (
+        es_sm100_mxfp8_blockscaled_grouped_quant as _es_sm100_mxfp8_blockscaled_grouped_quant,
+    )
+    from sgl_kernel import (
+        fp8_blockwise_scaled_grouped_mm as _fp8_blockwise_scaled_grouped_mm,
+    )
+    from sgl_kernel import prepare_moe_input as _prepare_moe_input
+    from sgl_kernel import shuffle_rows as _shuffle_rows
+    from sgl_kernel import silu_and_mul as _silu_and_mul
 
     from sglang.jit_kernel.nvfp4 import (
         cutlass_fp4_group_mm,
         scaled_fp4_experts_quant,
     )
+
+    @sglang_debug_api(op_name="sgl_kernel.apply_shuffle_mul_sum")
+    def apply_shuffle_mul_sum(*args, **kwargs):
+        return _apply_shuffle_mul_sum(*args, **kwargs)
+
+    @sglang_debug_api(op_name="sgl_kernel.es_fp8_blockwise_scaled_grouped_mm")
+    def es_fp8_blockwise_scaled_grouped_mm(*args, **kwargs):
+        return _es_fp8_blockwise_scaled_grouped_mm(*args, **kwargs)
+
+    @sglang_debug_api(op_name="sgl_kernel.es_sm100_mxfp8_blockscaled_grouped_mm")
+    def es_sm100_mxfp8_blockscaled_grouped_mm(*args, **kwargs):
+        return _es_sm100_mxfp8_blockscaled_grouped_mm(*args, **kwargs)
+
+    @sglang_debug_api(op_name="sgl_kernel.es_sm100_mxfp8_blockscaled_grouped_quant")
+    def es_sm100_mxfp8_blockscaled_grouped_quant(*args, **kwargs):
+        return _es_sm100_mxfp8_blockscaled_grouped_quant(*args, **kwargs)
+
+    @sglang_debug_api(op_name="sgl_kernel.fp8_blockwise_scaled_grouped_mm")
+    def fp8_blockwise_scaled_grouped_mm(*args, **kwargs):
+        return _fp8_blockwise_scaled_grouped_mm(*args, **kwargs)
+
+    @sglang_debug_api(op_name="sgl_kernel.prepare_moe_input")
+    def prepare_moe_input(*args, **kwargs):
+        return _prepare_moe_input(*args, **kwargs)
+
+    @sglang_debug_api(op_name="sgl_kernel.shuffle_rows")
+    def shuffle_rows(*args, **kwargs):
+        return _shuffle_rows(*args, **kwargs)
+
+    @sglang_debug_api(op_name="sgl_kernel.silu_and_mul")
+    def silu_and_mul(*args, **kwargs):
+        return _silu_and_mul(*args, **kwargs)
 
 
 def cutlass_fused_experts_fp8(

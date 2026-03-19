@@ -5,6 +5,7 @@ from typing import Optional
 
 import torch
 
+from sglang.api_logging import sglang_debug_api
 from sglang.srt.layers.quantization.marlin_utils import (
     USE_FP32_REDUCE_DEFAULT,
     marlin_make_workspace,
@@ -17,8 +18,19 @@ from sglang.srt.utils import direct_register_custom_op, is_cuda
 
 _is_cuda = is_cuda()
 if _is_cuda:
-    from sglang.jit_kernel.gptq_marlin import gptq_marlin_gemm
-    from sglang.jit_kernel.gptq_marlin_repack import gptq_marlin_repack
+    from sglang.jit_kernel.gptq_marlin import gptq_marlin_gemm as _gptq_marlin_gemm
+    from sglang.jit_kernel.gptq_marlin_repack import (
+        gptq_marlin_repack as _gptq_marlin_repack,
+    )
+
+    @sglang_debug_api(op_name="jit_kernel.gptq_marlin.gptq_marlin_gemm")
+    def gptq_marlin_gemm(*args, **kwargs):
+        return _gptq_marlin_gemm(*args, **kwargs)
+
+    @sglang_debug_api(op_name="jit_kernel.gptq_marlin_repack")
+    def gptq_marlin_repack(*args, **kwargs):
+        return _gptq_marlin_repack(*args, **kwargs)
+
 
 ScalarType, scalar_types = get_scalar_types()
 

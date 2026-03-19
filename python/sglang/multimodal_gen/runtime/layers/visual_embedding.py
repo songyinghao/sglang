@@ -21,8 +21,9 @@ from diffusers.models.embeddings import (
     get_timestep_embedding as timestep_embedding_diffusers,
 )
 
+from sglang.api_logging import sglang_debug_api
 from sglang.jit_kernel.timestep_embedding import (
-    timestep_embedding as timestep_embedding_cuda,
+    timestep_embedding as _timestep_embedding_cuda,
 )
 from sglang.multimodal_gen.runtime.layers.activation import get_act_fn
 from sglang.multimodal_gen.runtime.layers.linear import ColumnParallelLinear
@@ -30,6 +31,11 @@ from sglang.multimodal_gen.runtime.layers.mlp import MLP
 from sglang.multimodal_gen.runtime.platforms import current_platform
 
 _is_cuda = current_platform.is_cuda()
+
+
+@sglang_debug_api(op_name="jit_kernel.timestep_embedding.timestep_embedding")
+def timestep_embedding_cuda(*args, **kwargs):
+    return _timestep_embedding_cuda(*args, **kwargs)
 
 
 class PatchEmbed(nn.Module):

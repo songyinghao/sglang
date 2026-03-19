@@ -2,15 +2,31 @@ from typing import Optional
 
 import torch
 
+from sglang.api_logging import sglang_debug_api
 from sglang.srt.utils import is_cuda
 from sglang.srt.utils.custom_op import register_custom_op
 
 _is_cuda = is_cuda()
 
 if _is_cuda:
-    from sgl_kernel import moe_sum_reduce, silu_and_mul
+    from sgl_kernel import moe_sum_reduce as _moe_sum_reduce
+    from sgl_kernel import silu_and_mul as _silu_and_mul
 
-    from sglang.jit_kernel.moe_wna16_marlin import moe_wna16_marlin_gemm
+    from sglang.jit_kernel.moe_wna16_marlin import (
+        moe_wna16_marlin_gemm as _moe_wna16_marlin_gemm,
+    )
+
+    @sglang_debug_api(op_name="sgl_kernel.moe_sum_reduce")
+    def moe_sum_reduce(*args, **kwargs):
+        return _moe_sum_reduce(*args, **kwargs)
+
+    @sglang_debug_api(op_name="sgl_kernel.silu_and_mul")
+    def silu_and_mul(*args, **kwargs):
+        return _silu_and_mul(*args, **kwargs)
+
+    @sglang_debug_api(op_name="jit_kernel.moe_wna16_marlin.moe_wna16_marlin_gemm")
+    def moe_wna16_marlin_gemm(*args, **kwargs):
+        return _moe_wna16_marlin_gemm(*args, **kwargs)
 
 
 def get_scalar_type(num_bits: int, has_zp: bool):

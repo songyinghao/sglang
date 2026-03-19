@@ -2,10 +2,16 @@ import torch
 from torch import nn
 from torch.nn import Parameter
 
-from sglang.jit_kernel.ngram_embedding import compute_n_gram_ids
+from sglang.api_logging import sglang_debug_api
+from sglang.jit_kernel.ngram_embedding import compute_n_gram_ids as _compute_n_gram_ids
 from sglang.srt.layers.dp_attention import is_dp_attention_enabled
 from sglang.srt.layers.vocab_parallel_embedding import VocabParallelEmbedding
 from sglang.srt.model_executor.forward_batch_info import ForwardBatch
+
+
+@sglang_debug_api(op_name="jit_kernel.ngram_embedding.compute_n_gram_ids")
+def compute_n_gram_ids(*args, **kwargs):
+    return _compute_n_gram_ids(*args, **kwargs)
 
 
 class NgramEmbedding(torch.nn.Module):

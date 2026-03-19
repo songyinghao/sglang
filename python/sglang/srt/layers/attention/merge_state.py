@@ -1,12 +1,18 @@
 from typing import Optional, Tuple
 
 import torch
-from sgl_kernel import merge_state_v2
+from sgl_kernel import merge_state_v2 as _merge_state_v2
 
+from sglang.api_logging import sglang_debug_api
 from sglang.srt.layers.attention.triton_ops.merge_state import merge_state_triton
 from sglang.srt.utils import is_cuda
 
 _is_cuda = is_cuda()
+
+
+@sglang_debug_api(op_name="sgl_kernel.merge_state_v2")
+def merge_state_v2(*args, **kwargs):
+    return _merge_state_v2(*args, **kwargs)
 
 
 # Automatically fallback to the Triton kernel in some cases

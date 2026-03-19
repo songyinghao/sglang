@@ -33,7 +33,8 @@ import zmq
 from torch.cuda import Stream as CudaStream
 from torch.distributed import barrier
 
-from sglang.jit_kernel.ngram_embedding import update_token_table
+from sglang.api_logging import sglang_debug_api
+from sglang.jit_kernel.ngram_embedding import update_token_table as _update_token_table
 from sglang.srt.configs.model_config import ModelConfig
 from sglang.srt.constrained.grammar_manager import GrammarManager
 from sglang.srt.disaggregation.decode import (
@@ -136,6 +137,13 @@ from sglang.srt.managers.io_struct import (
     UpdateWeightsFromIPCReqInput,
     UpdateWeightsFromTensorReqInput,
 )
+
+
+@sglang_debug_api(op_name="jit_kernel.ngram_embedding.update_token_table")
+def update_token_table(*args, **kwargs):
+    return _update_token_table(*args, **kwargs)
+
+
 from sglang.srt.managers.mm_utils import init_mm_embedding_cache, unwrap_shm_features
 from sglang.srt.managers.multimodal_processor import get_mm_processor, import_processors
 from sglang.srt.managers.overlap_utils import FutureMap

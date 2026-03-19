@@ -15,9 +15,12 @@ from diffusers.models.embeddings import TimestepEmbedding, Timesteps
 from diffusers.models.modeling_outputs import Transformer2DModelOutput
 from diffusers.models.normalization import AdaLayerNormContinuous
 
+from sglang.api_logging import sglang_debug_api
 from sglang.jit_kernel.diffusion.triton.scale_shift import (
-    fuse_layernorm_scale_shift_gate_select01_kernel,
-    fuse_residual_layernorm_scale_shift_gate_select01_kernel,
+    fuse_layernorm_scale_shift_gate_select01_kernel as _fuse_layernorm_scale_shift_gate_select01_kernel,
+)
+from sglang.jit_kernel.diffusion.triton.scale_shift import (
+    fuse_residual_layernorm_scale_shift_gate_select01_kernel as _fuse_residual_layernorm_scale_shift_gate_select01_kernel,
 )
 from sglang.multimodal_gen.configs.models.dits.qwenimage import QwenImageDitConfig
 from sglang.multimodal_gen.runtime.distributed import get_local_torch_device
@@ -49,6 +52,19 @@ from sglang.multimodal_gen.runtime.utils.layerwise_offload import OffloadableDiT
 from sglang.multimodal_gen.runtime.utils.logging_utils import init_logger
 
 logger = init_logger(__name__)  # pylint: disable=invalid-name
+
+
+@sglang_debug_api(op_name="QwenImage.fuse_layernorm_scale_shift_gate_select01_kernel")
+def fuse_layernorm_scale_shift_gate_select01_kernel(*args, **kwargs):
+    return _fuse_layernorm_scale_shift_gate_select01_kernel(*args, **kwargs)
+
+
+@sglang_debug_api(
+    op_name="QwenImage.fuse_residual_layernorm_scale_shift_gate_select01_kernel"
+)
+def fuse_residual_layernorm_scale_shift_gate_select01_kernel(*args, **kwargs):
+    return _fuse_residual_layernorm_scale_shift_gate_select01_kernel(*args, **kwargs)
+
 
 try:
     from nunchaku.models.attention import NunchakuFeedForward  # type: ignore[import]

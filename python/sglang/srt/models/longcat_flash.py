@@ -37,6 +37,7 @@ from typing import Iterable, List, Optional, Tuple
 import torch
 from torch import nn
 
+from sglang.api_logging import sglang_debug_api
 from sglang.srt.configs import LongcatFlashConfig
 from sglang.srt.distributed import (
     get_tensor_model_parallel_world_size,
@@ -113,13 +114,23 @@ _is_cpu = is_cpu()
 _device_sm = get_device_sm()
 
 if _is_cuda:
-    from sgl_kernel import awq_dequantize
+    from sgl_kernel import awq_dequantize as _awq_dequantize
+
+    @sglang_debug_api(op_name="LongcatFlash.awq_dequantize")
+    def awq_dequantize(*args, **kwargs):
+        return _awq_dequantize(*args, **kwargs)
+
 elif _is_cpu and _is_cpu_amx_available:
     pass
 elif _is_hip:
     from sglang.srt.layers.quantization.awq_triton import (
-        awq_dequantize_triton as awq_dequantize,
+        awq_dequantize_triton as _awq_dequantize,
     )
+
+    @sglang_debug_api(op_name="LongcatFlash.awq_dequantize")
+    def awq_dequantize(*args, **kwargs):
+        return _awq_dequantize(*args, **kwargs)
+
 else:
     pass
 
