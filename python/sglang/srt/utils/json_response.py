@@ -3,7 +3,7 @@
 from typing import Any
 
 import orjson
-from fastapi.responses import Response
+from fastapi.responses import ORJSONResponse, Response
 
 # Keep response serialization behavior consistent across endpoints:
 # - Support non-string dictionary keys used in some metadata payloads.
@@ -16,10 +16,8 @@ def dumps_json(content: Any) -> bytes:
     return orjson.dumps(content, option=ORJSON_RESPONSE_OPTIONS)
 
 
-class SGLangORJSONResponse(Response):
+class SGLangORJSONResponse(ORJSONResponse):
     """ORJSON response with SGLang-specific serialization options."""
-
-    media_type = "application/json"
 
     def render(self, content: Any) -> bytes:
         return dumps_json(content)

@@ -25,7 +25,7 @@ import uuid
 from typing import TYPE_CHECKING, AsyncGenerator, Optional, Union
 
 from fastapi import Request
-from fastapi.responses import Response, StreamingResponse
+from fastapi.responses import ORJSONResponse, Response, StreamingResponse
 
 from sglang.srt.entrypoints.openai.protocol import (
     DeltaMessage,
@@ -105,7 +105,7 @@ class OpenAIServingTranscription(OpenAIServingBase):
         temperature: float,
         stream: bool,
         raw_request: Request,
-    ) -> Union[TranscriptionResponse, StreamingResponse, Response]:
+    ) -> Union[TranscriptionResponse, StreamingResponse, Response, ORJSONResponse]:
         """Main entry point for transcription requests."""
         # Calculate audio duration for usage reporting
         audio_duration_s = self._get_audio_duration(audio_data)
@@ -129,7 +129,7 @@ class OpenAIServingTranscription(OpenAIServingBase):
         adapted_request: GenerateReqInput,
         request: TranscriptionRequest,
         raw_request: Request,
-    ) -> Union[TranscriptionResponse, ErrorResponse, Response]:
+    ) -> Union[TranscriptionResponse, ErrorResponse, ORJSONResponse, Response]:
         """Handle non-streaming transcription request."""
         try:
             ret = await self.tokenizer_manager.generate_request(

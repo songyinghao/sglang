@@ -154,9 +154,8 @@ def add_api_key_middleware(
 ):
     """Add middleware for three endpoint auth levels: normal/admin_optional/admin_force."""
     # Import lazily so `decide_request_auth()` can be unit-tested without FastAPI installed.
+    from fastapi.responses import ORJSONResponse
     from starlette.requests import Request
-
-    from sglang.srt.utils.json_response import orjson_response
 
     class _ApiKeyASGIMiddleware:
         """ASGI-native middleware to preserve client disconnect events."""
@@ -186,15 +185,15 @@ def add_api_key_middleware(
             )
 
             if not decision.allowed:
-                response = orjson_response(
-                    {
+                response = ORJSONResponse(
+                    content={
                         "error": (
                             "Unauthorized"
                             if decision.error_status_code == 401
                             else "Forbidden"
                         )
                     },
-                    decision.error_status_code,
+                    status_code=decision.error_status_code,
                 )
                 await response(scope, receive, send)
                 return

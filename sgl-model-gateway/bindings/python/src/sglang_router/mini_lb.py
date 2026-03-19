@@ -16,10 +16,8 @@ import aiohttp
 import orjson
 import uvicorn
 from fastapi import FastAPI, HTTPException
-from fastapi.responses import Response, StreamingResponse
+from fastapi.responses import ORJSONResponse, Response, StreamingResponse
 from sglang_router.router_args import RouterArgs
-
-from sglang.srt.utils.json_response import SGLangORJSONResponse
 
 logger = logging.getLogger(__name__)
 
@@ -115,7 +113,7 @@ class MiniLoadBalancer:
 
     async def generate(
         self, modified_request, prefill_server, decode_server, endpoint
-    ) -> SGLangORJSONResponse:
+    ) -> ORJSONResponse:
         assert endpoint[0] != "/", f"Endpoint should not start with '/': {endpoint}"
 
         expected_decode_dp_rank = None
@@ -160,14 +158,14 @@ class MiniLoadBalancer:
             if expected_decode_dp_rank is not None:
                 actual = ret_json.get("meta_info", {}).get("dp_rank")
                 if actual != expected_decode_dp_rank:
-                    return SGLangORJSONResponse(
+                    return ORJSONResponse(
                         content={
                             "error": f"DP rank mismatch: expected {expected_decode_dp_rank}, got {actual}"
                         },
                         status_code=500,
                     )
 
-            return SGLangORJSONResponse(
+            return ORJSONResponse(
                 content=ret_json,
                 status_code=decode_response.status,
             )
@@ -334,7 +332,7 @@ async def _get_model_info_impl():
                     )
 
                 model_info_json = await response.json()
-                return SGLangORJSONResponse(content=model_info_json)
+                return ORJSONResponse(content=model_info_json)
 
         except aiohttp.ClientError as e:
             raise HTTPException(
@@ -457,6 +455,6 @@ async def get_models():
                     status_code=response.status,
                     detail=f"Prefill server error: Status {response.status}",
                 )
-            return SGLangORJSONResponse(content=await response.json())
+            return ORJSONResponse(content=await response.json())
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e))
