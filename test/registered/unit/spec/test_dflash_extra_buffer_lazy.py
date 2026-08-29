@@ -29,6 +29,10 @@ def _lazy_view(**overrides):
         mamba_track_interval=256,
         page_size=64,
         chunked_prefill_size=None,
+        # `supports_mamba_cache_extra_buffer` is a pure read of this plus the
+        # architecture; the cases name a supported arch, so the view says the
+        # backend rather than the answer.
+        linear_attn_backend="triton",
     )
     for key, value in overrides.items():
         setattr(view, key, value)
@@ -40,9 +44,6 @@ class TestValidateMambaExtraBufferLazyDflash(CustomTestCase):
 
     def _validate(self, view):
         with mock.patch(
-            "sglang.srt.arg_groups.overrides.supports_mamba_cache_extra_buffer",
-            return_value=True,
-        ), mock.patch(
             # Keep the test runnable on CPU-only hosts: the platform assert is
             # not what is under test here.
             "sglang.srt.arg_groups.mamba_hook.is_cuda",
@@ -81,10 +82,7 @@ class TestValidateMambaExtraBufferLazyDflash(CustomTestCase):
         def _must_not_be_read():
             raise AssertionError("the chunk size was read before page_size resolved")
 
-        with mock.patch(
-            "sglang.srt.arg_groups.overrides.supports_mamba_cache_extra_buffer",
-            return_value=True,
-        ), mock.patch("sglang.srt.arg_groups.mamba_hook.is_cuda", return_value=True):
+        with mock.patch("sglang.srt.arg_groups.mamba_hook.is_cuda", return_value=True):
             validate_mamba_extra_buffer(
                 _lazy_view(page_size=None),
                 "Qwen3NextForCausalLM",
