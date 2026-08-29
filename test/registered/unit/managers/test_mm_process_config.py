@@ -100,17 +100,24 @@ class TestBaseProcessorConfigExtraction(CustomTestCase):
         override.install()
         self.addCleanup(override.restore)
 
-        server_args = MagicMock()
-        server_args.mm_processor_worker_num = mm_processor_worker_num
-        server_args.mm_io_worker_num = mm_io_worker_num
-        server_args.mm_preprocess_cache_size_mb = None
-        server_args.tokenizer_worker_num = 1
-        server_args.trust_mm_content_hashes = False
-        server_args.media_url_max_file_size_mb = 64
-        # A bare MagicMock makes every attribute truthy, which silently sends
-        # the worker-count decision down the CPU branch. Pin what it reads.
-        server_args.disable_fast_image_processor = False
-        server_args.rl_on_policy_target = None
+        # A real record, not a MagicMock: the processor is a per-engine object
+        # and reads its own `server_args`, and a bare MagicMock makes every
+        # attribute truthy -- which silently sent the worker-count decision
+        # down the CPU branch until someone pinned the fields one at a time.
+        from sglang.srt.server_args import ServerArgs
+
+        server_args = ServerArgs(
+            model_path="dummy",
+            mm_process_config=mm_process_config,
+            allowed_media_domains=[],
+            mm_processor_worker_num=mm_processor_worker_num,
+            mm_io_worker_num=mm_io_worker_num,
+            mm_preprocess_cache_size_mb=None,
+            tokenizer_worker_num=1,
+            trust_mm_content_hashes=False,
+            media_url_max_file_size_mb=64,
+            disable_fast_image_processor=False,
+        )
 
         hf_config = MagicMock()
         mock_hf_processor = MagicMock()
