@@ -26,6 +26,7 @@ from sglang.srt.arg_groups.overrides import (
     max_prefill_buffer_tokens as max_prefill_buffer_tokens_of,
 )
 from sglang.srt.arg_groups.overrides import (
+    resolution_result,
     resolved_view,
 )
 from sglang.srt.runtime_context import (
@@ -377,10 +378,12 @@ class TestServerArgsScopedOverride(_IsolatedServerArgs):
         )
         published = override.install()
         self.assertIs(get_server_args(), published)
-        self.assertEqual(published.attention_backend, "triton")
-        self.assertEqual(published.chunked_prefill_size, -1)
+        # The hook declares; the record keeps the operator's input, so the
+        # values are read where resolution puts them.
+        self.assertEqual(resolution_result(published, "attention_backend"), "triton")
+        self.assertEqual(resolution_result(published, "chunked_prefill_size"), -1)
         # unnamed fields keep their dataclass defaults
-        self.assertEqual(published.tp_size, 1)
+        self.assertEqual(resolution_result(published, "tp_size"), 1)
 
     def test_unknown_fields_are_rejected(self):
         with self.assertRaises(ValueError):
@@ -391,7 +394,7 @@ class TestServerArgsScopedOverride(_IsolatedServerArgs):
         get_context().set_server_args(previous)
         override = get_context().override_server_args(tp_size=8)
         override.install()
-        self.assertEqual(get_server_args().tp_size, 8)
+        self.assertEqual(get_parallel().tp_size, 8)
         override.restore()
         self.assertIs(get_server_args(), previous)
 
@@ -406,9 +409,9 @@ class TestServerArgsScopedOverride(_IsolatedServerArgs):
         reset_context()
         with get_context().override_server_args(tp_size=2) as outer:
             with get_context().override_server_args(tp_size=4):
-                self.assertEqual(get_server_args().tp_size, 4)
+                self.assertEqual(get_parallel().tp_size, 4)
             self.assertIs(get_server_args(), outer)
-            self.assertEqual(get_server_args().tp_size, 2)
+            self.assertEqual(get_parallel().tp_size, 2)
 
     def test_private_attribute_seeding(self):
         # Property caches (e.g. _mamba_cache_chunk_size) are seeded through
@@ -424,7 +427,7 @@ class TestServerArgsScopedOverride(_IsolatedServerArgs):
         published = get_context().override_server_args(tp_size=2).install()
         with self.assertRaises(AttributeError):
             published.tp_size = 4
-        self.assertEqual(published.tp_size, 2)
+        self.assertEqual(resolution_result(published, "tp_size"), 2)
 
     def test_restore_resets_the_capture_seed(self):
         # install() seeds flags.capture from the published dummy; restore()

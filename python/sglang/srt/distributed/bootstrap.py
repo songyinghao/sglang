@@ -29,6 +29,7 @@ from sglang.srt.environ import envs
 from sglang.srt.layers.dp_attention import initialize_dp_attention
 from sglang.srt.platforms import current_platform
 from sglang.srt.runtime_context import (
+    get_disagg,
     get_exec,
     get_parallel,
     get_serving,
@@ -135,7 +136,7 @@ def init_torch_distributed(
             _prewarm_tp_lm_head_all_to_all()
 
     maybe_wait_for_gated_launch(
-        host=server_args.host, port=server_args.gated_launch_port
+        host=get_serving().host, port=server_args.gated_launch_port
     )
 
     # Draft workers reuse the target pool config and may exist on only one PP stage;
@@ -265,7 +266,7 @@ def _init_parallel_groups(
         attention_context_model_parallel_size=attn_cp_size,
         moe_data_model_parallel_size=moe_dp_size,
         decode_context_parallel_size=dcp_size,
-        duplicate_tp_group=server_args.enable_pdmux,
+        duplicate_tp_group=get_disagg().enable_pdmux,
         duplicate_attn_cp_group=(
             is_hip()
             and server_args.enable_two_batch_overlap
