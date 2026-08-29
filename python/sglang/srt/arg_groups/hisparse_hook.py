@@ -8,6 +8,7 @@ from sglang.srt.arg_groups.overrides import (
     resolved_view,
     resolving_view,
 )
+from sglang.srt.runtime_context import get_platform
 
 if TYPE_CHECKING:
     from sglang.srt.server_args import ServerArgs
@@ -24,9 +25,8 @@ HISPARSE_KV_CACHE_DTYPES = ("bfloat16", "fp8_e4m3")
 
 def _is_hip() -> bool:
     """The one place this family asks about ROCm, and the seam the tests patch."""
-    from sglang.srt.utils.common import is_hip
 
-    return is_hip()
+    return get_platform().is_hip
 
 
 def _hisparse_default_backend(kv_cache_dtype: str) -> str:
