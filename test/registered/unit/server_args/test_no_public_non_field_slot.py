@@ -59,11 +59,16 @@ def _self_written_attributes() -> set:
 class TestNoPublicNonFieldSlot(CustomTestCase):
     def test_every_public_attribute_is_a_field(self):
         written = _self_written_attributes()
-        self.assertGreater(
-            len(written),
-            3,
-            f"only {len(written)} self-writes found; the scan is broken, not the "
-            "record",
+        # Anchor on a write that is part of the resolution machinery rather
+        # than on a count: the count falls every time a derived read leaves the
+        # record, and a floor that erodes with the thing it measures reports a
+        # broken scan when the record is merely smaller.
+        self.assertIn(
+            "_resolution_finished",
+            written,
+            f"the scan did not find the resolution flag the record sets on "
+            f"itself, so it is the scan that is broken, not the record: "
+            f"{sorted(written)}",
         )
         fields = {field.name for field in dataclasses.fields(ServerArgs)}
         stray = sorted(
