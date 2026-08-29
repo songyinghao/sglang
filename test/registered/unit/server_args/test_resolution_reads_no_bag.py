@@ -55,10 +55,11 @@ def _accessor_names():
         for node in tree.body
         if isinstance(node, ast.FunctionDef) and node.name.startswith("get_")
     }
-    # The context object itself is not a bag: it exists before anything is
-    # published, and `declare_late_resolution` calls it deliberately to find
-    # out whether the record it was handed has been published yet.
-    return frozenset(names - {"get_context"})
+    # Two that are not bags. `get_context` is the context object itself, which
+    # exists before anything is published. `get_platform` answers what kind of
+    # machine this is, which is true before any configuration exists -- unlike a
+    # bag, which is projected from the resolution still running.
+    return frozenset(names - {"get_context", "get_platform"})
 
 
 _BAG_ACCESSORS = _accessor_names()

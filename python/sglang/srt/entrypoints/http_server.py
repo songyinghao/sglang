@@ -485,6 +485,7 @@ app.include_router(v1_loads_router)
 
 from sglang.srt.entrypoints.elastic_ep import router as elastic_ep_router
 from sglang.srt.runtime_context import (
+    describe_kv_events_publisher,
     get_disagg,
     get_exec,
     get_lora,
@@ -833,7 +834,7 @@ async def server_info():
             # Structured KV-event publisher descriptor for KV-aware routers.
             # `None` when publishing is disabled or misconfigured; see
             # `ServerArgs.describe_kv_events_publisher` for the precise contract.
-            "kv_events": server_args.describe_kv_events_publisher(),
+            "kv_events": describe_kv_events_publisher(server_args),
         }
     )
 
